@@ -1,0 +1,13 @@
+void vm_init(struct vm *vm, size_t mem_size)
+void vcpu_init(struct vm *vm, struct vcpu *vcpu)
+int run_vm(struct vm *vm, struct vcpu *vcpu, size_t sz)
+int run_real_mode(struct vm *vm, struct vcpu *vcpu)
+static void setup_protected_mode(struct kvm_sregs *sregs)
+int run_protected_mode(struct vm *vm, struct vcpu *vcpu)
+static void setup_paged_32bit_mode(struct vm *vm, struct kvm_sregs *sregs)
+int run_paged_32bit_mode(struct vm *vm, struct vcpu *vcpu)
+static void setup_64bit_code_segment(struct kvm_sregs *sregs)
+static void setup_long_mode(struct vm *vm, struct kvm_sregs *sregs)
+int run_long_mode(struct vm *vm, struct vcpu *vcpu)
+int main(int argc, char **argv)
+

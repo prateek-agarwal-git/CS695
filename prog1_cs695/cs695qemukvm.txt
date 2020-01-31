@@ -1,0 +1,35 @@
+Hardware support for virtualization, like Intel VT-X or AMD-V, is widely available in CPUs today. QEMU/KVM hypervisor provides hardware assisted virtualization to VMs on Linux. QEMU by itself is a software-based virtualization solution based on binary translation. It runs as a userspace process in Linux, with the guest memory embedded into this process. When paired with the KVM kernel module, it uses the KVM API to provide much more efficient hardware-assisted virtualization.
+Libvirt is a toolkit to manage VMs across several virtualization platforms, including QEMU/KVM. It exposes an API to manage VMs that can be invoked from several programming languages. It also comes with a commandline tool (virsh) and a GUI-based tool to manage VMs. The same APIs and tools can be used to manage multiple hypervisors, making libvirt easier to use than hypervisor-specific tools. Several cloud management systems use the libvirt APIs to manage VMs in a cloud.
+CPU virtualization using VMX mode
+QEMU/KVM initialization.
+QEMU starts out as a regular Linux process. To communicate with the KVM kernel module, it opens a special device (/dev/kvm), and obtains a file descriptor as a handle. Upon using the KVM API to create a VM, it obtains another fd for the VM. Finally, upon creating a VCPU, it obtains another fd for the VCPU. All communication to KVM happens via ioctl system calls on these three classes of file descriptors.
+QEMU memory maps a region of memory to act as the guest's physical memory. Further, for every VCPU, it memory maps a separate area of memory to store a data structure that is used for run time communication with KVM (struct kvm_run). The ioctl calls on the VM/VCPU fds are used to inform KVM about these areas of memory.
+QEMU also uses the KVM APIs (ioctl calls on the VCPU fd) to initialize the values of the various VCPU registers and other parameters of the new guest.
+QEMU execution loop.
+QEMU creates one thread for each separate VCPU, so that the guest can execute in parallel on multiple VCPUs. All VCPU threads use the same VM memory, but each has a separate kvm_run memory. Each thread calls ioctl(vpu_fd, KVM_RUN). This system call causes the kernel module to switch execution to the guest VM. This system calls returns back to the QEMU process when the VM exits, and the kvm_run data structure contains information about the exit. QEMU then handles the exit and returns back to the VM again.
+A very simplified pseudocode of each VCPU thread in QEMU looks as follows.
+ioctl(vcpu_fd, KVM_RUN);
+switch(kvm_run->exit_reason): 
+
+  case EXIT_IO:
+    handle the IO operation
+  case EXIT_HLT:
+    quit VM
+  ... handle all exits ....
+QEMU uses separate I/O threads to handle I/O on behalf of the VM, in addition to the VCPU threads, so that the VCPU can continue execution without blocking for I/O.
+What is happening under the hood inside KVM?
+KVM has the ability to turn on/off the VMX non-root mode using VMON and VMOFF instructions. When the VMX mode is off, the system runs in the regular (root) mode.
+KVM uses a special area of memory called VMCS/VMCB (VM control structure/block) to store information about each VM. Information about a VM that is provided by QEMU via ioctl calls on fds is used to configure the VMCS area of the VM. KVM uses special VMREAD/VMWRITE instructions to read/write to the VMCS area.
+When QEMU runs a VM for the first time, KVM identifies the VMCS of the corresponding VM, and uses the VMLAUNCH instruction to switch the CPU execution to the guest in the VMX mode. The CPU switches to the context of the the guest VM stored in VMCS, and starts running the guest. When the VM exits with the VMEXIT instruction, control returns back to KVM. KVM can handle the exit in the kernel, or bubble it back up to the QEMU user space process. When the exit is successfully handled, KVM uses the VMRESUME instruction to resume guest VM execution.
+The VMCS contains multiple pieces of information:
+A guest state area where information about the guest (e.g., CPU context) is stored by KVM.
+A host state area where the host OS context is stored when switching to the guest.
+Execution control area, where KVM can specify which instructions by the VM should cause an exit, and other such parameters that control the guest VM execution.
+Exit information, where the VM supplies information to KVM about the exit.
+Summary of control flow across QEMU, KVM, and the guest VM.
+QEMU user space process uses the KVM API to initialize a VM, and runs the VM via the ioctl(vcpu_fd, KVM_RUN) command.
+KVM kernel module saves host context, restores guest context from VMCS, and does VMLAUNCH.
+CPU performs VMENTRY, shifts to running the guest, until VMEXIT happens and control shifts back to KVM.
+After saving guest context and loading host context, KVM inspects the VMCS for the exit reason. If the exit can be handled within the kernel, it is handled directly, VMCS is updated, and the VM execution is resumed once again. Otherwise, control switches to QEMU.
+If QEMU must handle the exit, KVM places the exit information in the kvm_run structure, and the ioctl call returns in the user space process. QEMU inspects the exit reason, handles the exit, and invokes the KVM API to run the VM again.
+Host OS view: To the host OS, QEMU just appears as a regular process with multiple threads, that is communicating with the KVM kernel module. The host OS is not aware of the guest OS execution in any way. The QEMU process can be managed by the host using regular tools like ps, top etc.
