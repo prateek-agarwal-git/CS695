@@ -187,7 +187,7 @@ struct vcpu {
 void vcpu_init(struct vm *vm, struct vcpu *vcpu)
 {
 	int vcpu_mmap_size;
-
+// question!! vcpu is attached to vm here.
 	vcpu->fd = ioctl(vm->fd, KVM_CREATE_VCPU, 0);
         if (vcpu->fd < 0) {
 		perror("KVM_CREATE_VCPU");
@@ -215,17 +215,18 @@ void vcpu_init(struct vm *vm, struct vcpu *vcpu)
 	}
 }
 
-int run_vm(struct vm *vm, struct vcpu *vcpu, size_t sz)
+int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 {
 	struct kvm_regs regs;
 	uint64_t memval = 0;
 
 	for (;;) {
+		// question!! control switches from hypervisor to guest here
 		if (ioctl(vcpu->fd, KVM_RUN, 0) < 0) {
 			perror("KVM_RUN");
 			exit(1);
 		}
-
+ 
 		switch (vcpu->kvm_run->exit_reason) {
 		case KVM_EXIT_HLT:
 			goto check;
@@ -239,7 +240,14 @@ int run_vm(struct vm *vm, struct vcpu *vcpu, size_t sz)
 				fflush(stdout);
 				continue;
 			}
-
+			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
+			    && vcpu->kvm_run->io.port == 0x24) {
+				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
+				int * x = (int *)p;
+				printf("\n\n%d\n\n",*x );
+				fflush(stdout);
+				continue;
+				}
 			/* fall through */
 		default:
 			fprintf(stderr,	"Got exit_reason %d,"
@@ -296,7 +304,8 @@ int run_real_mode(struct vm *vm, struct vcpu *vcpu)
 	/* Clear all FLAGS bits, except bit 1 which is always set. */
 	regs.rflags = 2;
 	regs.rip = 0;
-
+//  question!! rip is the program counter in 64 bit mode eip is the PC in 32 bit mode. So guest execution starts 
+//  at guest virtual address 0.
 	if (ioctl(vcpu->fd, KVM_SET_REGS, &regs) < 0) {
 		perror("KVM_SET_REGS");
 		exit(1);
@@ -458,12 +467,14 @@ static void setup_long_mode(struct vm *vm, struct kvm_sregs *sregs)
 	uint64_t pdpt_addr = 0x3000;
 	// question!! single 4 kb page for pdp table
 	// https://david942j.blogspot.com/2018/10/note-learning-kvm-implement-your-own.html
-
+// http://www.rcollins.org/articles/2mpages/2MPages.html
 	uint64_t *pdpt = (void *)(vm->mem + pdpt_addr);
 	//  question !!page directory table size 4 kb
 	uint64_t pd_addr = 0x4000;
 	uint64_t *pd = (void *)(vm->mem + pd_addr);
-	//  three levels of page table. Each level has been allotted 4 KB page 
+	//  three levels of page table. Each level has been allotted 4 KB page.
+	//  pml4 -> pdpt -> pd. pd contains the actual frame numbers.  
+	// in this assignment there is only one page of size 2 MB. (So each table should have one entry ??)
 	pml4[0] = PDE64_PRESENT | PDE64_RW | PDE64_USER | pdpt_addr;
 	pdpt[0] = PDE64_PRESENT | PDE64_RW | PDE64_USER | pd_addr;
 	pd[0] = PDE64_PRESENT | PDE64_RW | PDE64_USER | PDE64_PS;
