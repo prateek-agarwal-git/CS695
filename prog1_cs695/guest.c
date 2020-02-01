@@ -8,13 +8,25 @@ static void outb(uint16_t port, uint8_t value) {
 static void printVal(uint16_t port, uint8_t value) {
 	asm("out %0,%1" : /* empty */ : "a" (value), "Nd" (port) : "memory");
 }
-
+static inline uint32_t getNumExits(uint16_t port) {
+	uint32_t ret;
+	asm("in %1, %0" : "=a" (ret) : "Nd" (port) : "memory");
+	return ret;
+}
+// static inline uint32_t inb(uint16_t port) {
+//   uint8_t ret;
+//   asm("in %1, %0" : "=a"(ret) : "Nd"(port) : "memory" );
+//   return ret;
+// }
+ 
 void
 __attribute__((noreturn))
 __attribute__((section(".start")))
 _start(void) {
 	const char *p;
-
+// 0xE9 : default port
+//  0x24 : printVal port
+// 0x48 : getnumofexitsport
 	for (p = "Hello, world!\n"; *p; ++p)
 		//  question !!! control switches from guest to hypervisor
 		// port number = 0xE9 i.e. 233 in decimal
@@ -22,6 +34,13 @@ _start(void) {
 	int a;
 	a = 83;
 	printVal(0x24, a);
+
+	printVal(0x24, a);
+	printVal(0x24, a);
+	printVal(0x24, a);
+
+	uint32_t q = getNumExits(0x48);
+	printVal(0x24,q);
 	*(long *) 0x400 = 42;
 
 	for (;;)
