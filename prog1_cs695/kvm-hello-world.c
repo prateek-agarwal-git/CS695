@@ -246,20 +246,48 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 			    && vcpu->kvm_run->io.port == 0x24) {
 				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
 				uint32_t * x = (uint32_t *)p;
+				// print value
 				printf("\n\n%u\n\n",*x );
 				fflush(stdout);
 				continue;
 				}
 			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_IN
 			    && vcpu->kvm_run->io.port == 0x48) {
-				int j2 = 9;
-				char * temp =(char *) &j2;
+				// int j2 = 9;
+				char * temp =(char *) &numExits;
 				// assert (1==2);
 				memcpy((char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset, temp,4);
 				// assert(3==4);
 				vcpu->kvm_run->io.size = 4;
 				
 				// fflush(stdout);
+				continue;
+				}
+			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
+			    && vcpu->kvm_run->io.port == 0x72) {
+				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
+				long  x = *(long *)p;
+				// uint64_t ans;
+				printf("vm mem = %p\n" ,vm->mem);
+				printf("x = %p ",(void *)x);
+				// void * temp =(char  *) vm->mem +x;
+				// char ** ans =  temp;
+				printf("%s", &vm->mem[x]);
+				// assert(1==2);
+				// memcpy(&ans, &vm->mem[x], sz);
+				// // assert(3==4);
+				// printf("\n\n%s\n\n",(char *)ans );
+				// // void * t = (char *)vm->mem + x;
+				// // assert(1==2);
+				// // memcpy((char *)t,&vm->mem[x], sz );
+				// // assert(3==4);
+				// // char * t = (char *)vm->mem + x;
+				// // printf("\n\n%s\n\n",*(char *)t );
+				// printf("\nt = %s\n",*(char *)t);
+
+				// printf("\n\n%s\n\n",*(char **)t);
+				// char ** t = p;
+				fflush(stdout);
 				continue;
 				}
 			/* fall through */
