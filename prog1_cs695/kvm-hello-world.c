@@ -10,7 +10,10 @@
 #include <linux/kvm.h>
 #include <assert.h>
 //  Emulation bit .if set floating point x87 bit enabled other wise not
-
+#define DISPLAY_PORT 0x72
+#define PRINTVAL_PORT 0x73
+#define NUMEXITS_PORT 0x74 
+#define EXAMPLE_PORT 0x75
 /* CR0 bits */
 #define CR0_PE 1u 
 #define CR0_MP (1U << 1)
@@ -109,112 +112,13 @@ struct vm {
 	char *mem;
 };
 // mem_size is the total memory size alloted to vm available in memreg.memory_size
-void vm_init(struct vm *vm, size_t mem_size)
-{
-	int api_ver;
-	struct kvm_userspace_memory_region memreg;
-// This structure contains: slot, flags, guest physical address, memory size, user space address.
-	vm->sys_fd = open("/dev/kvm", O_RDWR);
-	// 
-	// vm fd as discussed in class 
-	if (vm->sys_fd < 0) {
-		perror("open /dev/kvm");
-		exit(1);
-	}
-//  gets the version present on system
-	api_ver = ioctl(vm->sys_fd, KVM_GET_API_VERSION, 0);
-	if (api_ver < 0) {
-		perror("KVM_GET_API_VERSION");
-		exit(1);
-	}
-//  KVM api version should be 12
-	if (api_ver != KVM_API_VERSION) {
-		fprintf(stderr, "Got KVM api version %d, expected %d\n",
-			api_ver, KVM_API_VERSION);
-		exit(1);
-	}
-// creates a virtual machine
-	vm->fd = ioctl(vm->sys_fd, KVM_CREATE_VM, 0);
-	if (vm->fd < 0) {
-		perror("KVM_CREATE_VM");
-		exit(1);
-	}
-// tss : time sharing system. I do not know why it is used here
-        if (ioctl(vm->fd, KVM_SET_TSS_ADDR, 0xfffbd000) < 0) {
-                perror("KVM_SET_TSS_ADDR");
-		exit(1);
-	}
-// question!!
-	vm->mem = mmap(NULL, mem_size, PROT_READ | PROT_WRITE,
-		   MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
-	if (vm->mem == MAP_FAILED) {
-		perror("mmap mem");
-		exit(1);
-	}
-
-	madvise(vm->mem, mem_size, MADV_MERGEABLE);
-/* 
-	madvise is a system call in which we advise kernel to perform certain operations on memory.
-	Following excerpt is taken from man page of madvise describing MADV_MERGEABLE flag.
-	"Enable Kernel Samepage Merging (KSM) for the pages in the range specified by addr and  length.   The  kernel  regularly 
-	scans those  areas  of user memory that have been marked as mergeable, looking for pages with identical content.  These 
-	are replaced by a single write-protected page (which is automatically copied if a process later wants to update the 
-	content of  the  page). KSM merges only private anonymous pages (see mmap(2))."*/
-	memreg.slot = 0;
-	memreg.flags = 0;
-	memreg.guest_phys_addr = 0;
-	memreg.memory_size = mem_size;
-	memreg.userspace_addr = (unsigned long)vm->mem;
-	/*https://lwn.net/Articles/658511/
-	"The slot field provides an integer index identifying each region of memory we hand to KVM; calling 
-	KVM_SET_USER_MEMORY_REGION again with the same slot will replace this mapping, while calling it with a new slot will 
-	create a separate mapping. 	guest_phys_addr specifies the base "physical" address as seen from the guest, and userspace_
-	addr points to the backing memory in our process that we allocated with mmap(); note that these always use 64-bit values, even on 32-bit platforms. 
-	memory_size specifies how much memory to map: one page, 0x1000 bytes.
-	"
-	*/
-
-    if (ioctl(vm->fd, KVM_SET_USER_MEMORY_REGION, &memreg) < 0) {
-		perror("KVM_SET_USER_MEMORY_REGION");
-                exit(1);
-	}
-}
-
+void vm_init(struct vm *vm, size_t mem_size);
 struct vcpu {
 	int fd;
 	struct kvm_run *kvm_run;
 };
+void vcpu_init(struct vm *vm, struct vcpu *vcpu);
 
-void vcpu_init(struct vm *vm, struct vcpu *vcpu)
-{
-	int vcpu_mmap_size;
-// question!! vcpu is attached to vm here.
-	vcpu->fd = ioctl(vm->fd, KVM_CREATE_VCPU, 0);
-        if (vcpu->fd < 0) {
-		perror("KVM_CREATE_VCPU");
-                exit(1);
-	}
-// The KVM_RUN ioctl (cf.) communicates with userspace via a shared
-// memory region.  This ioctl returns the size of that region.  See the
-// KVM_RUN documentation for details.(below ioctl)
-// 
-//  question!! returns mmap size memory of the common region
-	vcpu_mmap_size = ioctl(vm->sys_fd, KVM_GET_VCPU_MMAP_SIZE, 0);
-        if (vcpu_mmap_size <= 0) {
-		perror("KVM_GET_VCPU_MMAP_SIZE");
-                exit(1);
-	}
-// question!! size = vcpu_mmap_size
-// allocation in kvm_run
-//  at null address of hypervisor?? Print the virtual address of kvm_run . NULL means ANY in mmap and does not mean 0.
-// fd = -1 means the page may not be swapped out to disk. here this page is accessed through vcpu->fd   
-	vcpu->kvm_run = mmap(NULL, vcpu_mmap_size, PROT_READ | PROT_WRITE,
-			     MAP_SHARED, vcpu->fd, 0);
-	if (vcpu->kvm_run == MAP_FAILED) {
-		perror("mmap kvm_run");
-		exit(1);
-	}
-}
 
 int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 {
@@ -235,7 +139,7 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 		case KVM_EXIT_IO:
 			numExits++;
 			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
-			    && vcpu->kvm_run->io.port == 0xE9) {
+			    && vcpu->kvm_run->io.port == EXAMPLE_PORT) {
 				char *p = (char *)vcpu->kvm_run;
 				fwrite(p + vcpu->kvm_run->io.data_offset,
 				       vcpu->kvm_run->io.size, 1, stdout);
@@ -243,7 +147,7 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				continue;
 			}
 			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
-			    && vcpu->kvm_run->io.port == 0x24) {
+			    && vcpu->kvm_run->io.port == PRINTVAL_PORT) {
 				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
 				uint32_t * x = (uint32_t *)p;
 				// print value
@@ -252,7 +156,7 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				continue;
 				}
 			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_IN
-			    && vcpu->kvm_run->io.port == 0x48) {
+			    && vcpu->kvm_run->io.port == NUMEXITS_PORT) {
 				// int j2 = 9;
 				char * temp =(char *) &numExits;
 				// assert (1==2);
@@ -264,7 +168,7 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				continue;
 				}
 			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
-			    && vcpu->kvm_run->io.port == 0x72) {
+			    && vcpu->kvm_run->io.port == DISPLAY_PORT) {
 				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
 				long  x = *(long *)p;
 				// uint64_t ans;
@@ -321,7 +225,80 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 }
 
 extern const unsigned char guest16[], guest16_end[];
+int run_real_mode(struct vm *vm, struct vcpu *vcpu);
+static void setup_protected_mode(struct kvm_sregs *sregs);
+extern const unsigned char guest32[], guest32_end[];
+int run_protected_mode(struct vm *vm, struct vcpu *vcpu);
+static void setup_paged_32bit_mode(struct vm *vm, struct kvm_sregs *sregs);
+int run_paged_32bit_mode(struct vm *vm, struct vcpu *vcpu);
+// question!!! extern arrays here . We will be only concerned 
+// with 64 bit(long mode) as discussed in the question.
+// Find guest code, guest page table, kernel stack
+//  What is a kernel stack??
+extern const unsigned char guest64[], guest64_end[];
+static void setup_64bit_code_segment(struct kvm_sregs *sregs);
+static void setup_long_mode(struct vm *vm, struct kvm_sregs *sregs);
+int run_long_mode(struct vm *vm, struct vcpu *vcpu);
 
+int main(int argc, char **argv)
+{
+	struct vm vm;
+	struct vcpu vcpu;
+	enum {
+		REAL_MODE,
+		PROTECTED_MODE,
+		PAGED_32BIT_MODE,
+		LONG_MODE,
+	} mode = REAL_MODE;
+	int opt;
+
+	while ((opt = getopt(argc, argv, "rspl")) != -1) {
+		switch (opt) {
+		case 'r':
+			mode = REAL_MODE;
+			break;
+
+		case 's':
+			mode = PROTECTED_MODE;
+			break;
+
+		case 'p':
+			mode = PAGED_32BIT_MODE;
+			break;
+
+		case 'l':
+			mode = LONG_MODE;
+			break;
+
+		default:
+			fprintf(stderr, "Usage: %s [ -r | -s | -p | -l ]\n",
+				argv[0]);
+			return 1;
+		}
+	}
+	// vm_init(&vm, 0x200000): second argument is size 2megabyte of memory is alloted to entire virtual machine question
+	vm_init(&vm, 0x200000);
+	// only one vcpu in this assignment
+	vcpu_init(&vm, &vcpu);
+
+	switch (mode) {
+	case REAL_MODE:
+		return !run_real_mode(&vm, &vcpu);
+
+	case PROTECTED_MODE:
+		return !run_protected_mode(&vm, &vcpu);
+
+	case PAGED_32BIT_MODE:
+		return !run_paged_32bit_mode(&vm, &vcpu);
+
+	case LONG_MODE:
+		return !run_long_mode(&vm, &vcpu);
+	}
+
+	return 1;
+}
+// asm: machine architecture dependent instructions
+// CRO control register
 int run_real_mode(struct vm *vm, struct vcpu *vcpu)
 {
 	struct kvm_sregs sregs;
@@ -356,7 +333,6 @@ int run_real_mode(struct vm *vm, struct vcpu *vcpu)
 	memcpy(vm->mem, guest16, guest16_end-guest16);
 	return run_vm(vm, vcpu, 2);
 }
-
 static void setup_protected_mode(struct kvm_sregs *sregs)
 {
 	struct kvm_segment seg = {
@@ -465,13 +441,106 @@ int run_paged_32bit_mode(struct vm *vm, struct vcpu *vcpu)
 	memcpy(vm->mem, guest32, guest32_end-guest32);
 	return run_vm(vm, vcpu, 4);
 }
-// question!!! extern arrays here . We will be only concerned 
-// with 64 bit(long mode) as discussed in the question.
-// Find guest code, guest page table, kernel stack
-//  What is a kernel stack??
+void vm_init(struct vm *vm, size_t mem_size)
+{
+	int api_ver;
+	struct kvm_userspace_memory_region memreg;
+// This structure contains: slot, flags, guest physical address, memory size, user space address.
+	vm->sys_fd = open("/dev/kvm", O_RDWR);
+	// 
+	// vm fd as discussed in class 
+	if (vm->sys_fd < 0) {
+		perror("open /dev/kvm");
+		exit(1);
+	}
+//  gets the version present on system
+	api_ver = ioctl(vm->sys_fd, KVM_GET_API_VERSION, 0);
+	if (api_ver < 0) {
+		perror("KVM_GET_API_VERSION");
+		exit(1);
+	}
+//  KVM api version should be 12
+	if (api_ver != KVM_API_VERSION) {
+		fprintf(stderr, "Got KVM api version %d, expected %d\n",
+			api_ver, KVM_API_VERSION);
+		exit(1);
+	}
+// creates a virtual machine
+	vm->fd = ioctl(vm->sys_fd, KVM_CREATE_VM, 0);
+	if (vm->fd < 0) {
+		perror("KVM_CREATE_VM");
+		exit(1);
+	}
+// tss : time sharing system. I do not know why it is used here
+        if (ioctl(vm->fd, KVM_SET_TSS_ADDR, 0xfffbd000) < 0) {
+                perror("KVM_SET_TSS_ADDR");
+		exit(1);
+	}
+// question!!
+	vm->mem = mmap(NULL, mem_size, PROT_READ | PROT_WRITE,
+		   MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+	if (vm->mem == MAP_FAILED) {
+		perror("mmap mem");
+		exit(1);
+	}
 
-extern const unsigned char guest64[], guest64_end[];
+	madvise(vm->mem, mem_size, MADV_MERGEABLE);
+/* 
+	madvise is a system call in which we advise kernel to perform certain operations on memory.
+	Following excerpt is taken from man page of madvise describing MADV_MERGEABLE flag.
+	"Enable Kernel Samepage Merging (KSM) for the pages in the range specified by addr and  length.   The  kernel  regularly 
+	scans those  areas  of user memory that have been marked as mergeable, looking for pages with identical content.  These 
+	are replaced by a single write-protected page (which is automatically copied if a process later wants to update the 
+	content of  the  page). KSM merges only private anonymous pages (see mmap(2))."*/
+	memreg.slot = 0;
+	memreg.flags = 0;
+	memreg.guest_phys_addr = 0;
+	memreg.memory_size = mem_size;
+	memreg.userspace_addr = (unsigned long)vm->mem;
+	/*https://lwn.net/Articles/658511/
+	"The slot field provides an integer index identifying each region of memory we hand to KVM; calling 
+	KVM_SET_USER_MEMORY_REGION again with the same slot will replace this mapping, while calling it with a new slot will 
+	create a separate mapping. 	guest_phys_addr specifies the base "physical" address as seen from the guest, and userspace_
+	addr points to the backing memory in our process that we allocated with mmap(); note that these always use 64-bit values, even on 32-bit platforms. 
+	memory_size specifies how much memory to map: one page, 0x1000 bytes.
+	"
+	*/
 
+    if (ioctl(vm->fd, KVM_SET_USER_MEMORY_REGION, &memreg) < 0) {
+		perror("KVM_SET_USER_MEMORY_REGION");
+                exit(1);
+	}
+}
+void vcpu_init(struct vm *vm, struct vcpu *vcpu)
+{
+	int vcpu_mmap_size;
+// question!! vcpu is attached to vm here.
+	vcpu->fd = ioctl(vm->fd, KVM_CREATE_VCPU, 0);
+        if (vcpu->fd < 0) {
+		perror("KVM_CREATE_VCPU");
+                exit(1);
+	}
+// The KVM_RUN ioctl (cf.) communicates with userspace via a shared
+// memory region.  This ioctl returns the size of that region.  See the
+// KVM_RUN documentation for details.(below ioctl)
+// 
+//  question!! returns mmap size memory of the common region
+	vcpu_mmap_size = ioctl(vm->sys_fd, KVM_GET_VCPU_MMAP_SIZE, 0);
+        if (vcpu_mmap_size <= 0) {
+		perror("KVM_GET_VCPU_MMAP_SIZE");
+                exit(1);
+	}
+// question!! size = vcpu_mmap_size
+// allocation in kvm_run
+//  at null address of hypervisor?? Print the virtual address of kvm_run . NULL means ANY in mmap and does not mean 0.
+// fd = -1 means the page may not be swapped out to disk. here this page is accessed through vcpu->fd   
+	vcpu->kvm_run = mmap(NULL, vcpu_mmap_size, PROT_READ | PROT_WRITE,
+			     MAP_SHARED, vcpu->fd, 0);
+	if (vcpu->kvm_run == MAP_FAILED) {
+		perror("mmap kvm_run");
+		exit(1);
+	}
+}
 static void setup_64bit_code_segment(struct kvm_sregs *sregs)
 {
 	struct kvm_segment seg = {
@@ -500,7 +569,7 @@ static void setup_64bit_code_segment(struct kvm_sregs *sregs)
 
 static void setup_long_mode(struct vm *vm, struct kvm_sregs *sregs)
 {
-	// question!! guest page table physical address 8192 0x2000
+	// question!! guest page table physical address 8192 = 2 * 2^12 0x2000
 	uint64_t pml4_addr = 0x2000;
 	// question!! single page for pml4_addr table
 	uint64_t *pml4 = (void *)(vm->mem + pml4_addr);
@@ -580,64 +649,3 @@ int run_long_mode(struct vm *vm, struct vcpu *vcpu)
 	memcpy(vm->mem, guest64, guest64_end-guest64);
 	return run_vm(vm, vcpu, 8);
 }
-
-
-int main(int argc, char **argv)
-{
-	struct vm vm;
-	struct vcpu vcpu;
-	enum {
-		REAL_MODE,
-		PROTECTED_MODE,
-		PAGED_32BIT_MODE,
-		LONG_MODE,
-	} mode = REAL_MODE;
-	int opt;
-
-	while ((opt = getopt(argc, argv, "rspl")) != -1) {
-		switch (opt) {
-		case 'r':
-			mode = REAL_MODE;
-			break;
-
-		case 's':
-			mode = PROTECTED_MODE;
-			break;
-
-		case 'p':
-			mode = PAGED_32BIT_MODE;
-			break;
-
-		case 'l':
-			mode = LONG_MODE;
-			break;
-
-		default:
-			fprintf(stderr, "Usage: %s [ -r | -s | -p | -l ]\n",
-				argv[0]);
-			return 1;
-		}
-	}
-	// vm_init(&vm, 0x200000): second argument is size 2megabyte of memory is alloted to entire virtual machine question
-	vm_init(&vm, 0x200000);
-	// only one vcpu in this assignment
-	vcpu_init(&vm, &vcpu);
-
-	switch (mode) {
-	case REAL_MODE:
-		return !run_real_mode(&vm, &vcpu);
-
-	case PROTECTED_MODE:
-		return !run_protected_mode(&vm, &vcpu);
-
-	case PAGED_32BIT_MODE:
-		return !run_paged_32bit_mode(&vm, &vcpu);
-
-	case LONG_MODE:
-		return !run_long_mode(&vm, &vcpu);
-	}
-
-	return 1;
-}
-// asm: machine architecture dependent instructions
-// CRO control register
