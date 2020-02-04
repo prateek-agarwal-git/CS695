@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
-
+#include <stdio.h>
+#include <string.h>
 static void outb(uint16_t port, uint8_t value) {
 	asm("outb %0,%1" : /* empty */ : "a" (value), "Nd" (port) : "memory");
 }
@@ -40,10 +41,11 @@ _start(void) {
 	// a = 1<<29;
 	// char * t = "Cye\n";
 	// *(char **)0x500 =t;
-	*( char *)0x500 = 'C';
-	*( char *)0x501 = 'A';
-	*( char *)0x502 = 'R';
-	*( char *)0x503 = '\0';
+	strcpy((char *)0x500, "CAR");
+	// *( char *)0x500 = 'C';
+	// *( char *)0x501 = 'A';
+	// *( char *)0x502 = 'R';
+	// *( char *)0x503 = '\0';
 	// printVal(0x24,0x500);
 	// a = sizeof(&p);
 	// printVal(0x24, a);

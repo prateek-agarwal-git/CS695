@@ -1,0 +1,13 @@
+0-4KB (0-FFF)
+2MB paging
+8KB-12KB - 1st level
+12KB-16KB - 2nd level
+16KB-20KB- final level
+
+0x5000- 
+5KB
+2MB - 2^21 , 0x100000
+
+(5 thousand - 1 lakh)
+
+PART B - printVal, get Numexits, display

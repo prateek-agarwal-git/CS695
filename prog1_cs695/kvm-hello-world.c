@@ -516,6 +516,7 @@ static void setup_long_mode(struct vm *vm, struct kvm_sregs *sregs)
 	uint64_t *pd = (void *)(vm->mem + pd_addr);
 	//  three levels of page table. Each level has been allotted 4 KB page.
 	//  pml4 -> pdpt -> pd. pd contains the actual frame numbers.  
+	// http://shell-storm.org/blog/Paging-modes-for-the-x86-32-bits-architectures/
 	// in this assignment there is only one page of size 2 MB. (So each table should have one entry ??)
 	pml4[0] = PDE64_PRESENT | PDE64_RW | PDE64_USER | pdpt_addr;
 	pdpt[0] = PDE64_PRESENT | PDE64_RW | PDE64_USER | pd_addr;
