@@ -1,13 +1,12 @@
 #include <stdio.h>
- int main(){
-     int a[5] = {0,1,2,3,4};
-    //  char * p = "Hello world";
-     printf("\n%p\n",a);
-     printf("\n%p\n",a+1);
-     printf("\n%p\n",a+2);
-     printf("\n%p\n",a+3);
+ #include <stdlib.h>
+ #include <string.h>
 
-    // printf("\n%x\n",&p);
-    // printf("\n%lu\n",p);
+int main(){
+    char p[10] = "hello";
+    printf("String is %s\n", p);
+    printf("Address is %p\n",p);
+    printf("&Address is %p",&p);
 
+     return 0;
  }

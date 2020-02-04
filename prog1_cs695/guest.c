@@ -13,7 +13,7 @@
 #define CLOSEFILE_PORT 0x80
 struct demoStruct{
 	int a; 
-	int b;
+	char b[20];
 };
 typedef struct demoStruct demostruct;
 // struct fileInfo {
@@ -32,18 +32,17 @@ typedef struct demoStruct demostruct;
 // 	asm("outb %0,%1" : /* empty */ : "a" (value), "Nd" (EXAMPLE_PORT) : "memory");
 // }
 
-static void printVal(uint32_t value) {
-	asm("outl %0,%1" : /* empty */ : "a" (value), "Nd" (PRINTVAL_PORT) : "memory");
-}
+// static void printVal(uint32_t value) {
+// 	asm("outl %0,%1" : /* empty */ : "a" (value), "Nd" (PRINTVAL_PORT) : "memory");
+// }
 // static inline uint32_t getNumExits() {
 // 	uint32_t ret;
 // 	asm("in %1, %0" : "=a" (ret) : "Nd" (NUMEXITS_PORT) : "memory");
 // 	return ret;
 // }
-// static void display( uint32_t addr) {
-// 	// uint16_t port = 0x72;
-// 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (DISPLAY_PORT) : "memory");
-// }
+static void display( uint32_t addr) {
+	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (DISPLAY_PORT) : "memory");
+}
 
  
 void
@@ -58,16 +57,18 @@ _start(void) {
 	// s.a = 23;
 	// s.b = 24
 	(*(demostruct *)0x500).a= 23;
-	(*(demostruct *)0x500).b= 24;
-
-
+	// (*(demostruct *)0x500).b= 24;
+	strcpy((*(demostruct *)0x500).b, "hello cs695\n\n\n");
+	// uintptr_t t = (uintptr_t)&((*(demostruct *)0x500).b);
+	// uint32_t m = (uint32_t) t;
+	display((uint32_t)(uintptr_t)&((*(demostruct *)0x500).b));
 
 	
 	
 	// for (p = "Balle world\n"; *p; ++p)
 	// 	outb(*p);
 	// uint32_t z = getNumExits();
-	printVal((*(demostruct *)0x500).a);
+	// printVal((*(demostruct *)0x500).a);
 
 
 	// // int a;
