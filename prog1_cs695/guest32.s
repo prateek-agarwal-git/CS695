@@ -94,39 +94,59 @@ _start:
 	movl	%esp, %ebp
 	.cfi_def_cfa_register 5
 	pushl	%ebx
-	subl	$16, %esp
+	subl	$32, %esp
 	.cfi_offset 3, -12
 	call	__x86.get_pc_thunk.bx
 	addl	$_GLOBAL_OFFSET_TABLE_, %ebx
+	call	getNumExits
+	movl	%eax, -32(%ebp)
+	call	getNumExits
+	movl	%eax, -28(%ebp)
+	call	getNumExits
+	movl	%eax, -24(%ebp)
+	call	getNumExits
+	movl	%eax, -20(%ebp)
 	call	getNumExits
 	movl	%eax, -16(%ebp)
 	call	getNumExits
 	movl	%eax, -12(%ebp)
 	leal	.LC0@GOTOFF(%ebx), %eax
-	movl	%eax, -20(%ebp)
+	movl	%eax, -36(%ebp)
 	jmp	.L6
 .L7:
-	movl	-20(%ebp), %eax
+	movl	-36(%ebp), %eax
 	movzbl	(%eax), %eax
 	movzbl	%al, %eax
 	pushl	%eax
 	call	outb
 	addl	$4, %esp
-	addl	$1, -20(%ebp)
+	addl	$1, -36(%ebp)
 .L6:
-	movl	-20(%ebp), %eax
+	movl	-36(%ebp), %eax
 	movzbl	(%eax), %eax
 	testb	%al, %al
 	jne	.L7
 	call	getNumExits
 	movl	%eax, -8(%ebp)
+	pushl	-32(%ebp)
+	call	printVal
+	addl	$4, %esp
+	pushl	-28(%ebp)
+	call	printVal
+	addl	$4, %esp
+	pushl	-8(%ebp)
+	call	printVal
+	addl	$4, %esp
+	pushl	-24(%ebp)
+	call	printVal
+	addl	$4, %esp
+	pushl	-20(%ebp)
+	call	printVal
+	addl	$4, %esp
 	pushl	-16(%ebp)
 	call	printVal
 	addl	$4, %esp
 	pushl	-12(%ebp)
-	call	printVal
-	addl	$4, %esp
-	pushl	-8(%ebp)
 	call	printVal
 	addl	$4, %esp
 	movl	$1024, %eax
@@ -134,7 +154,7 @@ _start:
 .L8:
 	movl	$42, %eax
 #APP
-# 80 "guest.c" 1
+# 88 "guest.c" 1
 	hlt
 # 0 "" 2
 #NO_APP
