@@ -123,7 +123,17 @@ struct vcpu {
 	struct kvm_run *kvm_run;
 };
 void vcpu_init(struct vm *vm, struct vcpu *vcpu);
-
+struct file_struct{
+	int fd; // 4
+	int flags; // 4
+	int retval;// 4
+	int displacement; // 4
+	char file_name[20]; // 16 maximum size of the filename string is 16
+	char buffer[200];// 200
+	
+	// total size of the structure is kept 24 bytes less than required
+};
+typedef struct file_struct file_handler;
 
 int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 {
@@ -140,7 +150,9 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 		switch (vcpu->kvm_run->exit_reason) {
 		case KVM_EXIT_HLT:
 			goto check;
-
+		// case KVM_EXIT_MMIO:
+		// 	printf("MMIO exit reason\n");
+		// 	exit(1);
 		case KVM_EXIT_IO:
 			numExits++;
 			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
@@ -176,6 +188,17 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				fflush(stdout);
 				continue;
 				}
+			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
+			    && vcpu->kvm_run->io.port == OPENFILE_PORT) {
+				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
+				long  x = *(long *)p;
+				file_handler * F = (file_handler *) &vm->mem[x];
+				int fd = open(F->file_name, F->flags);
+				F->fd = fd;
+				strcpy(F->buffer, "Success\n"); 
+				continue;
+				} 
+		
 			/* fall through */
 		default:
 			fprintf(stderr,	"Got exit_reason %d,"

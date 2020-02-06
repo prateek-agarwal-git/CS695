@@ -2,6 +2,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #define DISPLAY_PORT 0x72
 #define PRINTVAL_PORT 0x73
 #define NUMEXITS_PORT 0x74 
@@ -16,17 +20,34 @@ struct demoStruct{
 	char b[20];
 };
 typedef struct demoStruct demostruct;
-// struct fileInfo {
-// 	int fd;
-// 	char fileName[16];
-// 	char fileData[128];
-// };
-// static void fileOpen(){
+struct file_struct{
+	int fd; // 4
+	int flags; // 4
+	int retval;// 4
+	int displacement; // 4
+	char file_name[20]; // 16 maximum size of the filename string is 16
+	char buffer[200];// 200
+	
+	// total size of the structure is kept 24 bytes less than required
+};
+typedef struct file_struct file_handler;
+
+static void file_open(uint32_t addr){
+	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (OPENFILE_PORT) : "memory");
+}
+// static void file_read(uint32_t addr){
+// 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (READFILE_PORT) : "memory");
 // }
-// static void fileRead(){
+// static void file_write(uint32_t addr){
+// 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (WRITEFILE_PORT) : "memory");
 // }
-// static void fileWrite(){
+// static void file_close(uint32_t addr){
+	
 // }
+// static void file_seek(){
+
+// }
+// 
 
 // static void outb(uint8_t value) {
 // 	asm("outb %0,%1" : /* empty */ : "a" (value), "Nd" (EXAMPLE_PORT) : "memory");
@@ -56,15 +77,23 @@ _start(void) {
 	// demostruct s;
 	// s.a = 23;
 	// s.b = 24
-	(*(demostruct *)0x500).a= 23;
-	// (*(demostruct *)0x500).b= 24;
-	strcpy((*(demostruct *)0x500).b, "hello cs695\n\n\n");
+	// (*(demostruct *)0x500).a= 23;
+	// // (*(demostruct *)0x500).b= 24;
+	// strcpy((*(demostruct *)0x500).b, "hello cs695\n\n\n");
 	// uintptr_t t = (uintptr_t)&((*(demostruct *)0x500).b);
 	// uint32_t m = (uint32_t) t;
-	display((uint32_t)(uintptr_t)&((*(demostruct *)0x500).b));
+	// display((uint32_t)(uintptr_t)&((*(demostruct *)0x500).b));
+	file_handler * T =(file_handler *) (uintptr_t) 0x10000;
+	
+	T->flags = O_RDWR; 
+	strcpy(T->file_name, "fileot.txt");
+	// file_open(0x10000);
+	file_open((uint32_t)(uintptr_t)T);
+	// printVal(1);
+	display((uint32_t)(uintptr_t)&(T->buffer));
+	
+	
 
-	
-	
 	// for (p = "Balle world\n"; *p; ++p)
 	// 	outb(*p);
 	// uint32_t z = getNumExits();
@@ -88,6 +117,8 @@ _start(void) {
 	// // printVal(0x24, a);
 	// display(0x500);
 	// /
+
+
 	*(long *) 0x400 = 42;
 
 	for (;;)
