@@ -128,6 +128,7 @@ struct file_struct{
 	int flags; // 4
 	int retval;// 4
 	int displacement; // 4
+	int num_bytes;
 	char file_name[20]; // 16 maximum size of the filename string is 16
 	char buffer[200];// 200
 	
@@ -198,7 +199,31 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				strcpy(F->buffer, "Success\n"); 
 				continue;
 				} 
-		
+			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
+			    && vcpu->kvm_run->io.port == READFILE_PORT) {
+				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
+				long  x = *(long *)p;
+				file_handler * F = (file_handler *) &vm->mem[x];
+				int n = read(F->fd,F->buffer,F->num_bytes);
+				F->buffer[n] = 0;
+
+			// 	F->fd = fd;
+			// 	strcpy(F->buffer, "Success\n"); 
+				continue;
+				} 
+			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
+			    && vcpu->kvm_run->io.port == WRITEFILE_PORT) {
+				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
+				long  x = *(long *)p;
+				file_handler * F = (file_handler *) &vm->mem[x];
+				int n = write(F->fd,F->buffer,F->num_bytes);
+
+				F->buffer[n] = 0;
+
+			// 	F->fd = fd;
+			// 	strcpy(F->buffer, "Success\n"); 
+				continue;
+				} 
 			/* fall through */
 		default:
 			fprintf(stderr,	"Got exit_reason %d,"

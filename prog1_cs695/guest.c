@@ -25,6 +25,7 @@ struct file_struct{
 	int flags; // 4
 	int retval;// 4
 	int displacement; // 4
+	int num_bytes;
 	char file_name[20]; // 16 maximum size of the filename string is 16
 	char buffer[200];// 200
 	
@@ -35,12 +36,12 @@ typedef struct file_struct file_handler;
 static void file_open(uint32_t addr){
 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (OPENFILE_PORT) : "memory");
 }
-// static void file_read(uint32_t addr){
-// 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (READFILE_PORT) : "memory");
-// }
-// static void file_write(uint32_t addr){
-// 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (WRITEFILE_PORT) : "memory");
-// }
+static void file_read(uint32_t addr){
+	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (READFILE_PORT) : "memory");
+}
+static void file_write(uint32_t addr){
+	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (WRITEFILE_PORT) : "memory");
+}
 // static void file_close(uint32_t addr){
 	
 // }
@@ -53,14 +54,14 @@ static void file_open(uint32_t addr){
 // 	asm("outb %0,%1" : /* empty */ : "a" (value), "Nd" (EXAMPLE_PORT) : "memory");
 // }
 
-// static void printVal(uint32_t value) {
-// 	asm("outl %0,%1" : /* empty */ : "a" (value), "Nd" (PRINTVAL_PORT) : "memory");
-// }
-// static inline uint32_t getNumExits() {
-// 	uint32_t ret;
-// 	asm("in %1, %0" : "=a" (ret) : "Nd" (NUMEXITS_PORT) : "memory");
-// 	return ret;
-// }
+static void printVal(uint32_t value) {
+	asm("outl %0,%1" : /* empty */ : "a" (value), "Nd" (PRINTVAL_PORT) : "memory");
+}
+static inline uint32_t getNumExits() {
+	uint32_t ret;
+	asm("in %1, %0" : "=a" (ret) : "Nd" (NUMEXITS_PORT) : "memory");
+	return ret;
+}
 static void display( uint32_t addr) {
 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (DISPLAY_PORT) : "memory");
 }
@@ -83,15 +84,51 @@ _start(void) {
 	// uintptr_t t = (uintptr_t)&((*(demostruct *)0x500).b);
 	// uint32_t m = (uint32_t) t;
 	// display((uint32_t)(uintptr_t)&((*(demostruct *)0x500).b));
-	file_handler * T =(file_handler *) (uintptr_t) 0x10000;
-	
-	T->flags = O_RDWR; 
-	strcpy(T->file_name, "fileot.txt");
+	file_handler * T[10];
+	T[0] =(file_handler *) (uintptr_t) 0x10000;
+	// uint32_t q = getNumExits();
+	// uint32_t r = getNumExits();
+	// uint32_t s = getNumExits();
+	// uint32_t t = getNumExits();
+	// uint32_t u = getNumExits();
+
+	T[0]->flags = O_RDWR; 
+	strcpy(T[0]->file_name, "fileot.txt");
 	// file_open(0x10000);
-	file_open((uint32_t)(uintptr_t)T);
+	file_open((uint32_t)(uintptr_t)T[0]);
 	// printVal(1);
-	display((uint32_t)(uintptr_t)&(T->buffer));
-	
+	T[0]->num_bytes = 10;
+	file_read((uint32_t)(uintptr_t)T[0]);
+
+	file_write((uint32_t)(uintptr_t)T[0]);
+
+	display((uint32_t)(uintptr_t)&(T[0]->buffer));
+	// printVal(T[0]->fd);
+
+	uint32_t g = getNumExits();
+	printVal(g);
+	T[1] =(file_handler *) (uintptr_t) 0x11000;
+	// // uint32_t q = getNumExits();
+	// // uint32_t r = getNumExits();
+	// // uint32_t s = getNumExits();
+	// // uint32_t t = getNumExits();
+	// // uint32_t u = getNumExits();
+
+	T[1]->flags = O_RDWR; 
+	strcpy(T[1]->file_name, "fileot2.txt");
+	// // file_open(0x10000);
+	file_open((uint32_t)(uintptr_t)T[1]);
+	// // printVal(1);
+	display((uint32_t)(uintptr_t)&(T[1]->buffer));
+	printVal(T[1]->fd);
+	// g = getNumExits();
+	// printVal(g);
+	// printVal(q);
+	// printVal(r);
+	// printVal(s);
+	// printVal(t);
+	// printVal(u);
+
 	
 
 	// for (p = "Balle world\n"; *p; ++p)
