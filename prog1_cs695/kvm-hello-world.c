@@ -217,8 +217,21 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				long  x = *(long *)p;
 				file_handler * F = (file_handler *) &vm->mem[x];
 				int n = write(F->fd,F->buffer,F->num_bytes);
+				n = n + 1;
+				// F->buffer[n] = 0;
 
-				F->buffer[n] = 0;
+			// 	F->fd = fd;
+			// 	strcpy(F->buffer, "Success\n"); 
+				continue;
+				} 
+			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
+			    && vcpu->kvm_run->io.port == LSEEKFILE_PORT) {
+				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
+				long  x = *(long *)p;
+				file_handler * F = (file_handler *) &vm->mem[x];
+				int n = lseek(F->fd,F->displacement,SEEK_CUR);
+				printf("lseek location %d\n", n);
+				// F->buffer[n] = 0;
 
 			// 	F->fd = fd;
 			// 	strcpy(F->buffer, "Success\n"); 
