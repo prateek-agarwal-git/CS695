@@ -23,8 +23,9 @@ struct file_struct{
 	int fd; // 4
 	int flags; // 4
 	int retval;// 4
+	int whence;
 	int displacement; // 4
-	int num_bytes;
+	int num_bytes;//4
 	char file_name[20]; // 16 maximum size of the filename string is 16
 	char buffer[200];// 200
 	
@@ -93,34 +94,37 @@ _start(void) {
 	printVal(q[4]);
 	file_handler * T[100];
 	T[0] =(file_handler *) (uintptr_t) 0x10000;
-
 	T[0]->flags = O_RDWR; 
-	strcpy(T[0]->file_name, "fileot.txt");
-	// file_open(0x10000);
+	strcpy(T[0]->file_name, "f1.txt");
 	file_open((uint32_t)(uintptr_t)T[0]);
-	// printVal(1);
-	T[0]->num_bytes = 10;
+	T[1] =(file_handler *) (uintptr_t) 0x10100;
+	T[1]->flags = O_RDWR; 
+	strcpy(T[1]->file_name, "f2.txt");
+	file_open((uint32_t)(uintptr_t)T[1]);
+	// T[2] =(file_handler *) (uintptr_t) 0x10200;
+	// T[2]->flags = O_RDWR; 
+	// strcpy(T[2]->file_name, "fileot2.txt");
+	// file_open((uint32_t)(uintptr_t)T[2]);
+	// T[3] =(file_handler *) (uintptr_t) 0x10300;
+	// T[3]->flags = O_RDWR; 
+	// strcpy(T[3]->file_name, "fileot3.txt");
+	// file_open((uint32_t)(uintptr_t)T[3]);
+	T[0]->num_bytes = 100;
 	file_read((uint32_t)(uintptr_t)T[0]);
 	display((uint32_t)(uintptr_t)&(T[0]->buffer));
+	T[1]->whence =  SEEK_CUR;
+	T[1]->displacement = 30;
+	T[1]->num_bytes = 100;
+	// file_seek((uint32_t)(uintptr_t)T[0]);
+	file_seek((uint32_t)(uintptr_t)T[1]);
+	// strcpy(T[1]->buffer, T[0]->buffer);
+	for(int i= 0; i<100;i++){
+		T[1]->buffer[i] = T[0]->buffer[i];
+	}
 
-	T[0]->displacement = 1;
-	file_seek((uint32_t)(uintptr_t)T[0]);
-	file_write((uint32_t)(uintptr_t)T[0]);
-	// *(char **)0x500 =t;
-	
-	T[1] =(file_handler *) (uintptr_t) 0x11000;
-	T[1]->flags = O_RDWR; 
-	strcpy(T[1]->file_name, "fileot2.txt");
-	file_open((uint32_t)(uintptr_t)T[1]);
 	display((uint32_t)(uintptr_t)&(T[1]->buffer));
-	printVal(T[1]->fd);
-	// g = getNumExits();
-	// printVal(g);
-	// printVal(q);
-	// printVal(r);
-	// printVal(s);
-	// printVal(t);
-	// printVal(u);
+	// printVal(T[1]->fd);
+	file_write((uint32_t)(uintptr_t)T[1]);
 
 	
 

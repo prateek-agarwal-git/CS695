@@ -127,6 +127,7 @@ struct file_struct{
 	int fd; // 4
 	int flags; // 4
 	int retval;// 4
+	int whence;
 	int displacement; // 4
 	int num_bytes;
 	char file_name[20]; // 16 maximum size of the filename string is 16
@@ -226,7 +227,11 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
 				long  x = *(long *)p;
 				file_handler * F = (file_handler *) &vm->mem[x];
+				printf("hypervisor: %s\n",F->buffer);
+				printf("hypervisor: f = %d\n", F->fd);
+				printf("hypervisor: name = %s\n", F->file_name);
 				int n = write(F->fd,F->buffer,F->num_bytes);
+				printf("value from hypervisor %d",n);
 				n = n + 1;
 				// F->buffer[n] = 0;
 
@@ -239,7 +244,7 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
 				long  x = *(long *)p;
 				file_handler * F = (file_handler *) &vm->mem[x];
-				int n = lseek(F->fd,F->displacement,SEEK_CUR);
+				int n = lseek(F->fd,F->displacement,F->whence);
 				printf("lseek location %d\n", n);
 				// F->buffer[n] = 0;
 
