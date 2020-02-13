@@ -144,6 +144,12 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 	printf("The control switches from hypervisor to guest by calling ioctl(vcpu->fd, KVM_RUN, 0)\n");
 	printf("From guest to hypervisor: a) when we have out or in instruction.\nb) halt instruction.\n");
 	printf("The port number for Hello, world communication was 0xE9 in the original code.\n I have changed it to 0x75 defined by EXAMPLE_PORT macro.\n");
+	printf("Port number at hypervisor side is available at vcpu->kvm_run->io.port .\n");
+	printf("The memory buffer vcpu->kvm_run is used which starts at vcpu-> kvm_run[vcpu->kvm_run->io.data_offset].\n" );
+	printf("one exit per character is required. Programmed I/O. outb (One byte at a time).\n");
+	printf("42 is written at the GPA/GVA of 0x400.\nHowever it is also passed in halting instruction stored in %%rax of guestvm.\n ");
+	printf("It is read from both the places in hypervisor: regs.rax and vm->mem[0x400].\n");
+	
 	for (;;) {
 
 		if (ioctl(vcpu->fd, KVM_RUN, 0) < 0) {
