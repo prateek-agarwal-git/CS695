@@ -1,6 +1,5 @@
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -51,9 +50,9 @@ static void file_seek(uint32_t addr){
 // }
 // 
 
-// static void outb(uint8_t value) {
-// 	asm("outb %0,%1" : /* empty */ : "a" (value), "Nd" (EXAMPLE_PORT) : "memory");
-// }
+static void outb(uint8_t value) {
+	asm("outb %0,%1" : /* empty */ : "a" (value), "Nd" (EXAMPLE_PORT) : "memory");
+}
 
 static void printVal(uint32_t value) {
 	asm("outl %0,%1" : /* empty */ : "a" (value), "Nd" (PRINTVAL_PORT) : "memory");
@@ -66,32 +65,34 @@ static inline uint32_t getNumExits() {
 static void display( uint32_t addr) {
 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (DISPLAY_PORT) : "memory");
 }
-
+// static char abc[5] = "HEllo world";
  
 void
 __attribute__((noreturn))
 __attribute__((section(".start")))
 _start(void) {
-	// const char *p;
-	//  question !!! control switches from guest to hypervisor
-	// uint32_t q = getNumExits();
-	// printVal(q);
-	// demostruct s;
-	// s.a = 23;
-	// s.b = 24
-	// (*(demostruct *)0x500).a= 23;
-	// // (*(demostruct *)0x500).b= 24;
-	// strcpy((*(demostruct *)0x500).b, "hello cs695\n\n\n");
-	// uintptr_t t = (uintptr_t)&((*(demostruct *)0x500).b);
-	// uint32_t m = (uint32_t) t;
-	// display((uint32_t)(uintptr_t)&((*(demostruct *)0x500).b));
-	file_handler * T[10];
+	const char *p;
+
+	for (p = "Hello, world!\n"; *p; ++p)
+		outb(*p);
+
+	printVal(1234);
+	printVal(4321);
+	uint32_t q[20];
+	q[0] = getNumExits();
+	q[1] = getNumExits();
+	printVal(q[0]);
+	printVal(q[1]);
+	q[2] = 0x500;
+	const char * abc = "hi from guest";
+	strcpy((char *)(uintptr_t)q[2],abc );
+	q[3] = getNumExits();
+	display(q[2]);
+	q[4] = getNumExits();
+	printVal(q[3]);
+	printVal(q[4]);
+	file_handler * T[100];
 	T[0] =(file_handler *) (uintptr_t) 0x10000;
-	// uint32_t q = getNumExits();
-	// uint32_t r = getNumExits();
-	// uint32_t s = getNumExits();
-	// uint32_t t = getNumExits();
-	// uint32_t u = getNumExits();
 
 	T[0]->flags = O_RDWR; 
 	strcpy(T[0]->file_name, "fileot.txt");
@@ -105,25 +106,14 @@ _start(void) {
 	T[0]->displacement = 1;
 	file_seek((uint32_t)(uintptr_t)T[0]);
 	file_write((uint32_t)(uintptr_t)T[0]);
-
-	// printVal(T[0]->fd);
-
-	uint32_t g = getNumExits();
-	printVal(g);
-	// T[1] =(file_handler *) (uintptr_t) 0x11000;
-	// // uint32_t q = getNumExits();
-	// // uint32_t r = getNumExits();
-	// // uint32_t s = getNumExits();
-	// // uint32_t t = getNumExits();
-	// // uint32_t u = getNumExits();
-
-	// T[1]->flags = O_RDWR; 
-	// strcpy(T[1]->file_name, "fileot2.txt");
-	// // // file_open(0x10000);
-	// file_open((uint32_t)(uintptr_t)T[1]);
-	// // // printVal(1);
-	// display((uint32_t)(uintptr_t)&(T[1]->buffer));
-	// printVal(T[1]->fd);
+	// *(char **)0x500 =t;
+	
+	T[1] =(file_handler *) (uintptr_t) 0x11000;
+	T[1]->flags = O_RDWR; 
+	strcpy(T[1]->file_name, "fileot2.txt");
+	file_open((uint32_t)(uintptr_t)T[1]);
+	display((uint32_t)(uintptr_t)&(T[1]->buffer));
+	printVal(T[1]->fd);
 	// g = getNumExits();
 	// printVal(g);
 	// printVal(q);

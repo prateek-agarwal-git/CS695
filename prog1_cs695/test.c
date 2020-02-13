@@ -4,7 +4,9 @@
 
 int main(){
     char p[10] = "hello";
-    printf("String is %s\n", p);
+    char q[10];
+    strcpy(q,p);
+    printf("String is %s\n", q);
     printf("Address is %p\n",p);
     printf("&Address is %p",&p);
 

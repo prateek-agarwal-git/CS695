@@ -149,7 +149,8 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 	printf("one exit per character is required. Programmed I/O. outb (One byte at a time).\n");
 	printf("42 is written at the GPA/GVA of 0x400.\nHowever it is also passed in halting instruction stored in %%rax of guestvm.\n ");
 	printf("It is read from both the places in hypervisor: regs.rax and vm->mem[0x400].\n");
-	
+	printf("Part 1 finished.\n\n\nPart2: Adding new hypercalls.\n ");
+	printf("Demonstration of three hypercalls\n. printVal, getNumExits and display.\n");
 	for (;;) {
 
 		if (ioctl(vcpu->fd, KVM_RUN, 0) < 0) {
@@ -532,6 +533,7 @@ void vm_init(struct vm *vm, size_t mem_size)
                 perror("KVM_SET_TSS_ADDR");
 		exit(1);
 	}
+printf("Part 1 answers start here.\n");
 printf("The guest virtual memory is setup at the line vm->mem = mmap(NULL, mem_size, PROT_READ |"); 
 printf("PROT_WRITE,MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);");
 	vm->mem = mmap(NULL, mem_size, PROT_READ | PROT_WRITE,
