@@ -141,8 +141,11 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 	struct kvm_regs regs;
 	uint64_t memval = 0;
 	int numExits = 0;
+	printf("The control switches from hypervisor to guest by calling ioctl(vcpu->fd, KVM_RUN, 0)\n");
+	printf("From guest to hypervisor: a) when we have out or in instruction.\nb) halt instruction.\n");
+	printf("The port number for Hello, world communication was 0xE9 in the original code.\n I have changed it to 0x75 defined by EXAMPLE_PORT macro.\n");
 	for (;;) {
-		// question!! control switches from hypervisor to guest here
+
 		if (ioctl(vcpu->fd, KVM_RUN, 0) < 0) {
 			perror("KVM_RUN");
 			exit(1);
@@ -368,6 +371,8 @@ int run_real_mode(struct vm *vm, struct vcpu *vcpu)
 	/* Clear all FLAGS bits, except bit 1 which is always set. */
 	regs.rflags = 2;
 	regs.rip = 0;
+	printf("regs.rip is the program counter in 64 bit mode.\n It is initialized to 0. So the program starts at zero.\
+	\n regs.rip = 0; ");
 //  question!! rip is the program counter in 64 bit mode eip is the PC in 32 bit mode. So guest execution starts 
 //  at guest virtual address 0.
 	if (ioctl(vcpu->fd, KVM_SET_REGS, &regs) < 0) {
@@ -620,6 +625,7 @@ static void setup_64bit_code_segment(struct kvm_sregs *sregs)
 static void setup_long_mode(struct vm *vm, struct kvm_sregs *sregs)
 {
 	// question!! guest page table physical address 8192 = 2 * 2^12 0x2000
+	printf("Guest page table starting at 0x2000 in GVA/GPA and vm->mem[0x2000] in HVA. ");
 	uint64_t pml4_addr = 0x2000;
 	// question!! single page for pml4_addr table
 	uint64_t *pml4 = (void *)(vm->mem + pml4_addr);
@@ -633,6 +639,8 @@ static void setup_long_mode(struct vm *vm, struct kvm_sregs *sregs)
 	//  question !!page directory table size 4 kb
 	uint64_t pd_addr = 0x4000;
 	uint64_t *pd = (void *)(vm->mem + pd_addr);
+	printf("Three levels of page table. It occupies 3 pages starting at 8KB(0x2000),12 KB(0x3000) and 16 KB(0x4000)\n");
+	printf("One to one mapping between GVA and GPA.\n We have not virtualized the guest itself.\nEntire guest virtual address space is mapped by this page table.\n");
 	//  three levels of page table. Each level has been allotted 4 KB page.
 	//  pml4 -> pdpt -> pd. pd contains the actual frame numbers.  
 	// http://shell-storm.org/blog/Paging-modes-for-the-x86-32-bits-architectures/
@@ -682,20 +690,18 @@ int run_long_mode(struct vm *vm, struct vcpu *vcpu)
 	regs.rflags = 2;
 	regs.rip = 0;
 	/* Create stack at top of 2 MB page and grow down. */
-	//  question!! kernel stack starts  at the top of the guest address space (highest address which is 2MB
+	//  question!! the top of the guest address space (highest address which is 2MB
 	//  i.e. the size alloted to the vm) . In host virtual address space, it starts from vm-> mem + 2MB and grows 
 	// downwards to lower addresses.
-
+	printf("kernel stack starts  at top of 2 MB page and it grows down.starting address of kernel stack is 2<<20 or 2MB.  ");
+	printf("in host virtual address space it is vm->mem[0x200000]");
 	regs.rsp = 2 << 20;
 	if (ioctl(vcpu->fd, KVM_SET_REGS, &regs) < 0) {
 		perror("KVM_SET_REGS");
 		exit(1);
 	}
-// question!! guest code is copied from the starting address of vm->mem in the following line.
-// Addresses occupied by the code section in the host virtual address space is vm-> mem to 
-// vm-> mem + guest64_end
-
-
+	printf("Guest code is copied from vm->mem[0] to vm->mem[guest64_end - guest_64]\n");
+	printf("memcpy(vm->mem, guest64, guest64_end-guest64);\n ");
 	memcpy(vm->mem, guest64, guest64_end-guest64);
 	return run_vm(vm, vcpu, 8);
 }
