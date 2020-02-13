@@ -321,6 +321,8 @@ int main(int argc, char **argv)
 	}
 	// vm_init(&vm, 0x200000): second argument is size 2megabyte of memory is alloted to entire virtual machine question
 	vm_init(&vm, 0x200000);
+	printf("The size of the guest memory allocated is 2 MB.\nSent as an argument in the line vm_init(&vm,0x20000);\n");
+	
 	// only one vcpu in this assignment
 	vcpu_init(&vm, &vcpu);
 
@@ -519,14 +521,15 @@ void vm_init(struct vm *vm, size_t mem_size)
                 perror("KVM_SET_TSS_ADDR");
 		exit(1);
 	}
-// question!!
+printf("The guest virtual memory is setup at the line vm->mem = mmap(NULL, mem_size, PROT_READ |"); 
+printf("PROT_WRITE,MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);");
 	vm->mem = mmap(NULL, mem_size, PROT_READ | PROT_WRITE,
 		   MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
 	if (vm->mem == MAP_FAILED) {
 		perror("mmap mem");
 		exit(1);
 	}
-
+	printf("The host virtual address of vm->mem = %p\n", vm->mem);
 	madvise(vm->mem, mem_size, MADV_MERGEABLE);
 /* 
 	madvise is a system call in which we advise kernel to perform certain operations on memory.
@@ -568,11 +571,14 @@ void vcpu_init(struct vm *vm, struct vcpu *vcpu)
 // KVM_RUN documentation for details.(below ioctl)
 // 
 //  question!! returns mmap size memory of the common region
+printf("VCPU memory is allocated in the line\n");
+printf("vcpu_mmap_size = ioctl(vm->sys_fd, KVM_GET_VCPU_MMAP_SIZE, 0);");
 	vcpu_mmap_size = ioctl(vm->sys_fd, KVM_GET_VCPU_MMAP_SIZE, 0);
         if (vcpu_mmap_size <= 0) {
 		perror("KVM_GET_VCPU_MMAP_SIZE");
                 exit(1);
 	}
+printf("The memory size of vcpu is  = %d \n",vcpu_mmap_size);
 // question!! size = vcpu_mmap_size
 // allocation in kvm_run
 //  at null address of hypervisor?? Print the virtual address of kvm_run . NULL means ANY in mmap and does not mean 0.
@@ -583,6 +589,7 @@ void vcpu_init(struct vm *vm, struct vcpu *vcpu)
 		perror("mmap kvm_run");
 		exit(1);
 	}
+	printf("The memory of vcpu is allocated at hypervisor virtual address = %p\n", vcpu->kvm_run);
 }
 static void setup_64bit_code_segment(struct kvm_sregs *sregs)
 {
