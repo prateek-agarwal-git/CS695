@@ -153,7 +153,7 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 	printf("one exit per character is required. Programmed I/O. outb (One byte at a time).\n");
 	printf("42 is written at the GPA/GVA of 0x400.\nHowever it is also passed in halting instruction stored in %%rax of guestvm.\n ");
 	printf("It is read from both the places in hypervisor: regs.rax and vm->mem[0x400].\n");
-	printf("Part 1 finished.\n\n\nPart2: Adding new hypercalls.\n ");
+	printf("Part 1 finished.\n\nPart2: Adding new hypercalls.\n ");
 	printf("Demonstration of three hypercalls\n. printVal, getNumExits and display.\n");
 	for (;;) {
 
@@ -165,9 +165,6 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 		switch (vcpu->kvm_run->exit_reason) {
 		case KVM_EXIT_HLT:
 			goto check;
-		// case KVM_EXIT_MMIO:
-		// 	printf("MMIO exit reason\n");
-		// 	exit(1);
 		case KVM_EXIT_IO:
 			numExits++;
 			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
@@ -197,8 +194,6 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 			    && vcpu->kvm_run->io.port == DISPLAY_PORT) {
 				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
 				long  x = *(long *)p;
-				// printf("vm mem = %p\n" ,vm->mem);
-				// printf("x = %p ",(void *)x);
 				printf("%s", &vm->mem[x]);
 				fflush(stdout);
 				continue;
@@ -228,9 +223,14 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				file_handler * F = (file_handler *) &vm->mem[x];
 				int n = read(F->fd,F->buffer,F->num_bytes);
 				F->buffer[n] = 0;
-
-			// 	F->fd = fd;
-			// 	strcpy(F->buffer, "Success\n"); 
+				continue;
+				} 
+			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
+			    && vcpu->kvm_run->io.port == CLOSEFILE_PORT) {
+				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
+				long  x = *(long *)p;
+				file_handler * F = (file_handler *) &vm->mem[x];
+				close(F->fd);
 				continue;
 				} 
 			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
@@ -238,13 +238,7 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
 				long  x = *(long *)p;
 				file_handler * F = (file_handler *) &vm->mem[x];
-				// printf("hypervisor: %s\n",F->buffer);
-				// printf("\nend\n");
-				// printf("hypervisor: f = %d\n", F->fd);
-				// printf("hypervisor: name = %s\n", F->file_name);
 				int n = write(F->fd,F->buffer,F->num_bytes);
-				// perror("why::");
-				// printf("value from hypervisor %d",n);
 				n = n + 1;
 				continue;
 				} 
@@ -254,11 +248,7 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				long  x = *(long *)p;
 				file_handler * F = (file_handler *) &vm->mem[x];
 				int n = lseek(F->fd,F->displacement,F->whence);
-				printf("lseek location %d\n", n);
-				// F->buffer[n] = 0;
-
-			// 	F->fd = fd;
-			// 	strcpy(F->buffer, "Success\n"); 
+				printf("lseek location %d\n", n); 
 				continue;
 				} 
 			/* fall through */
@@ -392,8 +382,8 @@ int run_real_mode(struct vm *vm, struct vcpu *vcpu)
 	/* Clear all FLAGS bits, except bit 1 which is always set. */
 	regs.rflags = 2;
 	regs.rip = 0;
-	printf("regs.rip is the program counter in 64 bit mode.\n It is initialized to 0. So the program starts at zero.\
-	\n regs.rip = 0; ");
+	printf("regs.rip is the program counter in 64 bit mode.\nIt is initialized to 0. So the program starts at zero.\
+	\nregs.rip = 0; ");
 //  question!! rip is the program counter in 64 bit mode eip is the PC in 32 bit mode. So guest execution starts 
 //  at guest virtual address 0.
 	if (ioctl(vcpu->fd, KVM_SET_REGS, &regs) < 0) {
@@ -605,11 +595,7 @@ printf("vcpu_mmap_size = ioctl(vm->sys_fd, KVM_GET_VCPU_MMAP_SIZE, 0);");
 		perror("KVM_GET_VCPU_MMAP_SIZE");
                 exit(1);
 	}
-printf("The memory size of vcpu is  = %d \n",vcpu_mmap_size);
-// question!! size = vcpu_mmap_size
-// allocation in kvm_run
-//  at null address of hypervisor?? Print the virtual address of kvm_run . NULL means ANY in mmap and does not mean 0.
-// fd = -1 means the page may not be swapped out to disk. here this page is accessed through vcpu->fd   
+	printf("The memory size of vcpu is  = %d \n",vcpu_mmap_size);
 	vcpu->kvm_run = mmap(NULL, vcpu_mmap_size, PROT_READ | PROT_WRITE,
 			     MAP_SHARED, vcpu->fd, 0);
 	if (vcpu->kvm_run == MAP_FAILED) {
@@ -647,7 +633,7 @@ static void setup_64bit_code_segment(struct kvm_sregs *sregs)
 static void setup_long_mode(struct vm *vm, struct kvm_sregs *sregs)
 {
 	// question!! guest page table physical address 8192 = 2 * 2^12 0x2000
-	printf("Guest page table starting at 0x2000 in GVA/GPA and vm->mem[0x2000] in HVA. ");
+	printf("Guest page table starting at 0x2000 in GVA/GPA and vm->mem[0x2000] in HVA.\n");
 	uint64_t pml4_addr = 0x2000;
 	// question!! single page for pml4_addr table
 	uint64_t *pml4 = (void *)(vm->mem + pml4_addr);
@@ -662,7 +648,7 @@ static void setup_long_mode(struct vm *vm, struct kvm_sregs *sregs)
 	uint64_t pd_addr = 0x4000;
 	uint64_t *pd = (void *)(vm->mem + pd_addr);
 	printf("Three levels of page table. It occupies 3 pages starting at 8KB(0x2000),12 KB(0x3000) and 16 KB(0x4000)\n");
-	printf("One to one mapping between GVA and GPA.\n We have not virtualized the guest itself.\nEntire guest virtual address space is mapped by this page table.\n");
+	printf("One to one mapping between GVA and GPA.\nWe have not virtualized the guest itself.\nEntire guest virtual address space is mapped by this page table.\n");
 	//  three levels of page table. Each level has been allotted 4 KB page.
 	//  pml4 -> pdpt -> pd. pd contains the actual frame numbers.  
 	// http://shell-storm.org/blog/Paging-modes-for-the-x86-32-bits-architectures/
@@ -712,11 +698,8 @@ int run_long_mode(struct vm *vm, struct vcpu *vcpu)
 	regs.rflags = 2;
 	regs.rip = 0;
 	/* Create stack at top of 2 MB page and grow down. */
-	//  question!! the top of the guest address space (highest address which is 2MB
-	//  i.e. the size alloted to the vm) . In host virtual address space, it starts from vm-> mem + 2MB and grows 
-	// downwards to lower addresses.
-	printf("kernel stack starts  at top of 2 MB page and it grows down.starting address of kernel stack is 2<<20 or 2MB.  ");
-	printf("in host virtual address space it is vm->mem[0x200000]");
+	printf("kernel stack starts  at top of 2 MB page and it grows down.\nstarting address of kernel stack is 2<<20 or 2MB.  ");
+	printf("in\n host virtual address space it is vm->mem[0x200000]");
 	regs.rsp = 2 << 20;
 	if (ioctl(vcpu->fd, KVM_SET_REGS, &regs) < 0) {
 		perror("KVM_SET_REGS");

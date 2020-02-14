@@ -44,9 +44,9 @@ static void file_seek(uint32_t addr){
 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (LSEEKFILE_PORT) : "memory");
 	
 }
-// static void file_seek(){
-
-// }
+static void file_close(uint32_t addr){
+	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (CLOSEFILE_PORT) : "memory");
+}
 // 
 
 static void outb(uint8_t value) {
@@ -64,8 +64,6 @@ static inline uint32_t getNumExits() {
 static void display( uint32_t addr) {
 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (DISPLAY_PORT) : "memory");
 }
-// static char abc[5] = "HEllo world";
- 
 void
 __attribute__((noreturn))
 __attribute__((section(".start")))
@@ -138,89 +136,17 @@ _start(void) {
 	T[4]->num_bytes = 8;
 	file_seek((uint32_t)(uintptr_t)T[4]);
 	file_write((uint32_t)(uintptr_t)T[4]);	
-	
-	// T[1] =(file_handler *) (uintptr_t) 0x10100;
-	// T[1]->flags = O_RDWR; 
-	// strcpy(T[1]->file_name, "f2.txt");
-	// file_open((uint32_t)(uintptr_t)T[1]);
-	// // T[2] =(file_handler *) (uintptr_t) 0x10200;
-	// // T[2]->flags = O_RDWR; 
-	// // strcpy(T[2]->file_name, "fileot2.txt");
-	// // file_open((uint32_t)(uintptr_t)T[2]);
-	// // T[3] =(file_handler *) (uintptr_t) 0x10300;
-	// // T[3]->flags = O_RDWR; 
-	// // strcpy(T[3]->file_name, "fileot3.txt");
-	// // file_open((uint32_t)(uintptr_t)T[3]);
-	// T[0]->num_bytes = 100;
-	// file_read((uint32_t)(uintptr_t)T[0]);
-	// display((uint32_t)(uintptr_t)&(T[0]->buffer));
-	// T[1]->whence =  SEEK_CUR;
-	// T[1]->displacement = 30;
-	// T[1]->num_bytes = 100;
-	// // file_seek((uint32_t)(uintptr_t)T[0]);
-	// file_seek((uint32_t)(uintptr_t)T[1]);
-	// // strcpy(T[1]->buffer, T[0]->buffer);
-	// for(int i= 0; i<100;i++){
-	// 	T[1]->buffer[i] = T[0]->buffer[i];
-	// }
-
-	// display((uint32_t)(uintptr_t)&(T[1]->buffer));
-	// // printVal(T[1]->fd);
-	// file_write((uint32_t)(uintptr_t)T[1]);
-
-	
-
-	// for (p = "Balle world\n"; *p; ++p)
-	// 	outb(*p);
-	// uint32_t z = getNumExits();
-	// printVal((*(demostruct *)0x500).a);
-
-
-	// // int a;
-	// // a = 1<<29;
-	// // char * t = "Cye\n";
-	// // *(char **)0x500 =t;
-	// strcpy((char *)0x500, "CAR");
-	// // *( char *)0x500 = 'C';
-	// // *( char *)0x501 = 'A';
-	// // *( char *)0x502 = 'R';
-	// // *(int *)10000 = 789;
-	// // *( char *)0x503 = '\0';
-	// // printVal(789);
-	// // a = sizeof(&p);
-	// // printVal(0x24, a);
-	// // printVal(0x24, a);
-	// // printVal(0x24, a);
-	// display(0x500);
-	// /
-
-
+	// Demo reusing of ports after closing of file
+	printVal(T[2]->fd);
+	file_close((uint32_t)(uintptr_t)T[2]);
+	T[5] =(file_handler *) (uintptr_t) 0x10500;
+	T[5]->flags = O_RDWR;
+	strcpy(T[5]->file_name, "f5.txt");
+	file_open((uint32_t)(uintptr_t)T[5]);
+	printVal(T[5]->fd);
 	*(long *) 0x400 = 42;
 
 	for (;;)
 		// control switches from guest to hypervisor
 		asm("hlt" : /* empty */ : "a" (42) : "memory");
 }
-// static inline uint32_t inb(uint16_t port) {
-//   uint8_t ret;
-//   asm("in %1, %0" : "=a"(ret) : "Nd"(port) : "memory" );
-//   return ret;
-// }
-
-// uint32_t q = getNumExits();
-	// printVal(q);
-	// q = getNumExits();
-	// printVal(q);
-	// printVal(q);
-
-	// uint32_t r = getNumExits();
-	// printVal(r);
-	
-	// uint32_t h = getNumExits();
-	// printVal(h);
-	// uint32_t i = getNumExits();
-	// printVal(i);
-	// uint32_t j = getNumExits();
-	// printVal(j);
-	// uint32_t k = getNumExits();
-	// printVal(k);
