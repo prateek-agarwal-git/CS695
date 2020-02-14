@@ -39,13 +39,13 @@ static void file_open(uint32_t addr){
 static void file_read(uint32_t addr){
 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (READFILE_PORT) : "memory");
 }
-static void file_write(uint32_t addr){
-	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (WRITEFILE_PORT) : "memory");
-}
-static void file_seek(uint32_t addr){
-	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (LSEEKFILE_PORT) : "memory");
+// static void file_write(uint32_t addr){
+// 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (WRITEFILE_PORT) : "memory");
+// }
+// static void file_seek(uint32_t addr){
+// 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (LSEEKFILE_PORT) : "memory");
 	
-}
+// }
 // static void file_seek(){
 
 // }
@@ -85,7 +85,7 @@ _start(void) {
 	printVal(q[0]);
 	printVal(q[1]);
 	q[2] = 0x500;
-	const char * abc = "hi from guest";
+	const char * abc = "hi by guest\n";
 	strcpy((char *)(uintptr_t)q[2],abc );
 	q[3] = getNumExits();
 	display(q[2]);
@@ -93,38 +93,61 @@ _start(void) {
 	printVal(q[3]);
 	printVal(q[4]);
 	file_handler * T[100];
+	//open demo
+	// displaying error messages
 	T[0] =(file_handler *) (uintptr_t) 0x10000;
-	T[0]->flags = O_RDWR; 
-	strcpy(T[0]->file_name, "f1.txt");
+	T[0]->flags = O_RDONLY; 
+	strcpy(T[0]->file_name, "f34.txt");
 	file_open((uint32_t)(uintptr_t)T[0]);
+	display((uint32_t)(uintptr_t)&(T[0]->buffer));
+	
+	//display successful opening of file
 	T[1] =(file_handler *) (uintptr_t) 0x10100;
 	T[1]->flags = O_RDWR; 
-	strcpy(T[1]->file_name, "f2.txt");
+	strcpy(T[1]->file_name, "f1.txt");
 	file_open((uint32_t)(uintptr_t)T[1]);
-	// T[2] =(file_handler *) (uintptr_t) 0x10200;
-	// T[2]->flags = O_RDWR; 
-	// strcpy(T[2]->file_name, "fileot2.txt");
-	// file_open((uint32_t)(uintptr_t)T[2]);
-	// T[3] =(file_handler *) (uintptr_t) 0x10300;
-	// T[3]->flags = O_RDWR; 
-	// strcpy(T[3]->file_name, "fileot3.txt");
-	// file_open((uint32_t)(uintptr_t)T[3]);
-	T[0]->num_bytes = 100;
-	file_read((uint32_t)(uintptr_t)T[0]);
-	display((uint32_t)(uintptr_t)&(T[0]->buffer));
-	T[1]->whence =  SEEK_CUR;
-	T[1]->displacement = 30;
-	T[1]->num_bytes = 100;
-	// file_seek((uint32_t)(uintptr_t)T[0]);
-	file_seek((uint32_t)(uintptr_t)T[1]);
-	// strcpy(T[1]->buffer, T[0]->buffer);
-	for(int i= 0; i<100;i++){
-		T[1]->buffer[i] = T[0]->buffer[i];
-	}
-
 	display((uint32_t)(uintptr_t)&(T[1]->buffer));
-	// printVal(T[1]->fd);
-	file_write((uint32_t)(uintptr_t)T[1]);
+	T[1]->num_bytes = 10;
+	file_read((uint32_t)(uintptr_t)T[1]);
+	display((uint32_t)(uintptr_t)&(T[1]->buffer));
+	// display 200 bytes
+	T[2] =(file_handler *) (uintptr_t) 0x10200;
+	T[2]->flags = O_RDWR; 
+	strcpy(T[2]->file_name, "f2.txt");
+	file_open((uint32_t)(uintptr_t)T[2]);
+	display((uint32_t)(uintptr_t)&(T[2]->buffer));
+	T[2]->num_bytes = 200;
+	file_read((uint32_t)(uintptr_t)T[2]);
+	display((uint32_t)(uintptr_t)&(T[2]->buffer));
+	//
+	// T[1] =(file_handler *) (uintptr_t) 0x10100;
+	// T[1]->flags = O_RDWR; 
+	// strcpy(T[1]->file_name, "f2.txt");
+	// file_open((uint32_t)(uintptr_t)T[1]);
+	// // T[2] =(file_handler *) (uintptr_t) 0x10200;
+	// // T[2]->flags = O_RDWR; 
+	// // strcpy(T[2]->file_name, "fileot2.txt");
+	// // file_open((uint32_t)(uintptr_t)T[2]);
+	// // T[3] =(file_handler *) (uintptr_t) 0x10300;
+	// // T[3]->flags = O_RDWR; 
+	// // strcpy(T[3]->file_name, "fileot3.txt");
+	// // file_open((uint32_t)(uintptr_t)T[3]);
+	// T[0]->num_bytes = 100;
+	// file_read((uint32_t)(uintptr_t)T[0]);
+	// display((uint32_t)(uintptr_t)&(T[0]->buffer));
+	// T[1]->whence =  SEEK_CUR;
+	// T[1]->displacement = 30;
+	// T[1]->num_bytes = 100;
+	// // file_seek((uint32_t)(uintptr_t)T[0]);
+	// file_seek((uint32_t)(uintptr_t)T[1]);
+	// // strcpy(T[1]->buffer, T[0]->buffer);
+	// for(int i= 0; i<100;i++){
+	// 	T[1]->buffer[i] = T[0]->buffer[i];
+	// }
+
+	// display((uint32_t)(uintptr_t)&(T[1]->buffer));
+	// // printVal(T[1]->fd);
+	// file_write((uint32_t)(uintptr_t)T[1]);
 
 	
 

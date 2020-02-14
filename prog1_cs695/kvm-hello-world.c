@@ -196,7 +196,7 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				long  x = *(long *)p;
 				// printf("vm mem = %p\n" ,vm->mem);
 				// printf("x = %p ",(void *)x);
-				printf("%s\n", &vm->mem[x]);
+				printf("%s", &vm->mem[x]);
 				fflush(stdout);
 				continue;
 				}
@@ -207,7 +207,14 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				file_handler * F = (file_handler *) &vm->mem[x];
 				int fd = open(F->file_name, F->flags);
 				F->fd = fd;
-				strcpy(F->buffer, "Success\n"); 
+				if (fd<0){
+    				sprintf(F->buffer,"%s Error:: %s",F->file_name,strerror(errno));
+					
+				}
+				else{
+    				sprintf(F->buffer,"%s opened successfully\n",F->file_name);
+					
+				} 
 				continue;
 				} 
 			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
