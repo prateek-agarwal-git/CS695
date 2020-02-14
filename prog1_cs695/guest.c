@@ -22,14 +22,12 @@ typedef struct demoStruct demostruct;
 struct file_struct{
 	int fd; // 4
 	int flags; // 4
-	int retval;// 4
-	int whence;
+	int whence;// 4
 	int displacement; // 4
 	int num_bytes;//4
-	char file_name[20]; // 16 maximum size of the filename string is 16
-	char buffer[200];// 200
-	
-	// total size of the structure is kept 24 bytes less than required
+	// int isnewFile;
+	char file_name[20];
+	char buffer[201];// 200
 };
 typedef struct file_struct file_handler;
 
@@ -39,13 +37,13 @@ static void file_open(uint32_t addr){
 static void file_read(uint32_t addr){
 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (READFILE_PORT) : "memory");
 }
-// static void file_write(uint32_t addr){
-// 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (WRITEFILE_PORT) : "memory");
-// }
-// static void file_seek(uint32_t addr){
-// 	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (LSEEKFILE_PORT) : "memory");
+static void file_write(uint32_t addr){
+	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (WRITEFILE_PORT) : "memory");
+}
+static void file_seek(uint32_t addr){
+	asm("outl %0,%1" : /* empty */ : "a" (addr), "Nd" (LSEEKFILE_PORT) : "memory");
 	
-// }
+}
 // static void file_seek(){
 
 // }
@@ -94,14 +92,14 @@ _start(void) {
 	printVal(q[4]);
 	file_handler * T[100];
 	//open demo
-	// displaying error messages
+	// displaying error messages : open demo
 	T[0] =(file_handler *) (uintptr_t) 0x10000;
 	T[0]->flags = O_RDONLY; 
-	strcpy(T[0]->file_name, "f34.txt");
+	strcpy(T[0]->file_name, "f0.txt");
 	file_open((uint32_t)(uintptr_t)T[0]);
 	display((uint32_t)(uintptr_t)&(T[0]->buffer));
 	
-	//display successful opening of file
+	//display successful opening of file : open demo
 	T[1] =(file_handler *) (uintptr_t) 0x10100;
 	T[1]->flags = O_RDWR; 
 	strcpy(T[1]->file_name, "f1.txt");
@@ -110,7 +108,7 @@ _start(void) {
 	T[1]->num_bytes = 10;
 	file_read((uint32_t)(uintptr_t)T[1]);
 	display((uint32_t)(uintptr_t)&(T[1]->buffer));
-	// display 200 bytes
+	// display 200 bytes : read demo
 	T[2] =(file_handler *) (uintptr_t) 0x10200;
 	T[2]->flags = O_RDWR; 
 	strcpy(T[2]->file_name, "f2.txt");
@@ -119,7 +117,28 @@ _start(void) {
 	T[2]->num_bytes = 200;
 	file_read((uint32_t)(uintptr_t)T[2]);
 	display((uint32_t)(uintptr_t)&(T[2]->buffer));
-	//
+	// write demo: writing 200 bytes into a file
+	T[3] =(file_handler *) (uintptr_t) 0x10300;
+	T[3]->flags = O_APPEND|O_RDWR;
+	strcpy(T[3]->file_name, "f3.txt");
+	file_open((uint32_t)(uintptr_t)T[3]);
+	T[3]->num_bytes = 200;
+	for(int i= 0; i<200;i++){
+		T[3]->buffer[i] = T[2]->buffer[i];
+	}
+	file_write((uint32_t)(uintptr_t)T[3]);
+	//lseek demo completed	
+	T[4] =(file_handler *) (uintptr_t) 0x10400;
+	T[4]->flags = O_RDWR;
+	strcpy(T[4]->file_name, "f4.txt");
+	file_open((uint32_t)(uintptr_t)T[4]);
+	strcpy(T[4]->buffer, "agarwal\n");
+	T[4]->whence = SEEK_END;
+	T[4]->displacement = -1;
+	T[4]->num_bytes = 8;
+	file_seek((uint32_t)(uintptr_t)T[4]);
+	file_write((uint32_t)(uintptr_t)T[4]);	
+	
 	// T[1] =(file_handler *) (uintptr_t) 0x10100;
 	// T[1]->flags = O_RDWR; 
 	// strcpy(T[1]->file_name, "f2.txt");

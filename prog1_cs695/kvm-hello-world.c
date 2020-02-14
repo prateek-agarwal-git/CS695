@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <linux/kvm.h>
 #include <assert.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 //  Emulation bit .if set floating point x87 bit enabled other wise not
 /* CR0 bits */
 #define CR0_PE 1u 
@@ -126,12 +128,13 @@ void vcpu_init(struct vm *vm, struct vcpu *vcpu);
 struct file_struct{
 	int fd; // 4
 	int flags; // 4
-	int retval;// 4
-	int whence;
+	int whence;// 4
 	int displacement; // 4
-	int num_bytes;
-	char file_name[20]; // 16 maximum size of the filename string is 16
-	char buffer[200];// 200
+	int num_bytes;//4
+	// int isnewFile;
+	char file_name[20];
+	 // 16 maximum size of the filename string is 16
+	char buffer[201];// 200
 	
 	// total size of the structure is kept 24 bytes less than required
 };
@@ -205,7 +208,8 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
 				long  x = *(long *)p;
 				file_handler * F = (file_handler *) &vm->mem[x];
-				int fd = open(F->file_name, F->flags);
+				int fd;
+				fd = open(F->file_name, F->flags);
 				F->fd = fd;
 				if (fd<0){
     				sprintf(F->buffer,"%s Error:: %s",F->file_name,strerror(errno));
@@ -234,16 +238,14 @@ int run_vm( struct vm *vm, struct vcpu *vcpu, size_t sz)
 				char *p = (char *)vcpu->kvm_run +vcpu->kvm_run->io.data_offset ;
 				long  x = *(long *)p;
 				file_handler * F = (file_handler *) &vm->mem[x];
-				printf("hypervisor: %s\n",F->buffer);
-				printf("hypervisor: f = %d\n", F->fd);
-				printf("hypervisor: name = %s\n", F->file_name);
+				// printf("hypervisor: %s\n",F->buffer);
+				// printf("\nend\n");
+				// printf("hypervisor: f = %d\n", F->fd);
+				// printf("hypervisor: name = %s\n", F->file_name);
 				int n = write(F->fd,F->buffer,F->num_bytes);
-				printf("value from hypervisor %d",n);
+				// perror("why::");
+				// printf("value from hypervisor %d",n);
 				n = n + 1;
-				// F->buffer[n] = 0;
-
-			// 	F->fd = fd;
-			// 	strcpy(F->buffer, "Success\n"); 
 				continue;
 				} 
 			if (vcpu->kvm_run->io.direction == KVM_EXIT_IO_OUT
