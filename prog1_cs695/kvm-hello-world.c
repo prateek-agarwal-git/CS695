@@ -692,7 +692,7 @@ int run_long_mode(struct vm *vm, struct vcpu *vcpu)
 		perror("KVM_SET_SREGS");
 		exit(1);
 	}
-
+	printf("\n\n\ns sregs idt base  %llu \n", sregs.gdt.base);
 	memset(&regs, 0, sizeof(regs));
 	/* Clear all FLAGS bits, except bit 1 which is always set. */
 	regs.rflags = 2;
