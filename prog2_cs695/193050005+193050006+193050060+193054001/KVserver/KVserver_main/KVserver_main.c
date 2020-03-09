@@ -98,30 +98,16 @@ void start_server(){
 					--curr_clients;
 				} else {
 					can_close[i] = 0;
-					// printf("%s\n", request_XML_format[req_xml_index]);
-				    // if(strlen(request_XML_format[req_xml_index]) == 0) {
-					// 	printf("##################\n, %d, %d\n", bytes_count, request_XML_format[req_xml_index][bytes_count]);
-					// 	// for(int i=0;i<10;++i)
-					// 	// 	printf("%i ", (unsigned int)request_XML_format[req_xml_index]);
-					// 	// printf("\n");
-					// 	can_close[i] = 1;
-					// 	continue;
-					// }
-					//seems correct
 					char * temp = request_xml + bytes_count;
 					while(strstr(request_xml, "</KVMessage>")== NULL){
 						bytes_count = recv(pollfds[i].fd, temp, MAXXMLSIZE, 0);
 						temp= temp + bytes_count;
-						// printf("Hi read KVserver main\n");
 					}
 					add_work(request_xml, pollfds[i].fd);
-					// req_xml_index = (req_xml_index+1) % MAXQUEUESIZE;
-					// write(pollfds[i].fd, "gotcha...", 11);
 					can_close[i] = 1;
 				}
 			}
 		}	
-
 		if(curr_clients < total_clients) {
 			int j = 0;
 			for(int i=0; i<total_clients; ++i) {

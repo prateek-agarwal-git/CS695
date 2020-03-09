@@ -9,21 +9,7 @@ int main(int argc, char * argv[]){
         printf("Unknown Error: Please follow the command line format i.e. ./object server_IP server_PORT\n");
         exit(1);
     }
-    // char* portnumber;
-    // char *IP;
-
-    // ssize_t x = 0;
-    // printf("Enter IP:\n");
-    // assert(getline(&IP, &x, stdin)!=-1);
-    // printf("Enter port number :\n");x = 0;
-
-    // assert(getline(&portnumber, &x, stdin)!=-1);
     int server_port_number = read_integer(argv[2]);
-    // IP[strlen(IP)-1] = 0;
-    // int server_port_number= read_integer(portnumber);
-    // printf("IP:%s\n", IP);
-    // printf("PN:%d", server_port_number);
-    // exit(0);
     init_client();
     
     start_client(server_port_number, argv[1]);    
