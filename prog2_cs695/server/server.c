@@ -24,6 +24,7 @@
 #define PORT_NUMBER 8080
 #define SERVER_IP "127.0.0.1"
 #define MAX_CLIENT_CONN 500
+#define MAXXMLSIZE 256
 void do_work(char *, int );
 int main(int argc, char** argv) {
 	struct sockaddr_in addr;
@@ -51,13 +52,19 @@ int main(int argc, char** argv) {
 	}
     memset(&addr, 0, sizeof (addr));
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(PORT_NUMBER;
+	addr.sin_port = htons(PORT_NUMBER);
 	addr.sin_addr.s_addr = inet_addr(SERVER_IP);
-    if(listen(sockfd, MAX_CLIENT_CONN) == -1) {
+	if(bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
+		printf("Error in socket binding: %s\n", strerror(errno));
+		close(sockfd);
+		exit(-1);
+	}
+	if(listen(sockfd, MAX_CLIENT_CONN) == -1) {
 		printf("Error in socket listen: %s\n", strerror(errno));
 		close(sockfd);
 		exit(-1);
 	}
+
     printf("Server Running ...\n");
 	addrlen = sizeof(client_sockaddr_in);
 	memset(pollfds, 0 , sizeof(pollfds));
@@ -84,6 +91,7 @@ int main(int argc, char** argv) {
 				}
 			}
 		}
+		// printf("88\n\n");
         poll(pollfds, curr_clients, 1000);
 		int total_clients = curr_clients, bytes_count;
         for(int i=0; i<total_clients; ++i) {
@@ -99,7 +107,7 @@ int main(int argc, char** argv) {
 				} else {
 					can_close[i] = 0;
 					char * temp = request_xml + bytes_count;
-					while(strstr(request_xml, "</KVMessage>")== NULL){
+					while(strstr(request_xml, "</Request>")== NULL){
 						bytes_count = recv(pollfds[i].fd, temp, MAXXMLSIZE, 0);
 						temp= temp + bytes_count;
 					}

@@ -28,15 +28,16 @@ typedef struct client_start_args client_args;
 void init_client(int, client_args * );
 void start_client(void * );
 void client_converter(int , char * );
-int my_atoi(char * s);
-int client_parser(char * response_XML);
+int my_atoi(char * );
+int client_parser(char * );
 
 thread_manager* manager; 
 int main(int argc, char * argv[]){
     client_args* C =(client_args *) malloc(sizeof(client_args));
     C->port_number = 8080;
     strcpy(C->server_IP, "127.0.0.1");
-    init_client(4, C);
+    init_client(4,C);
+    // start_client( C);
     return 0;
 }
 void init_client(int thread_count, client_args * Cptr) {
@@ -60,13 +61,49 @@ void start_client(void * arg ){
     server_addr.sin_port = htons(C.port_number);
     server_addr.sin_addr.s_addr = inet_addr(C.server_IP);
     printf("%d, %s\n", C.port_number, C.server_IP);
-   char * request_XML = (char*)malloc(MAXXMLSIZE);
+    if(connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+        printf("Network Error: Could not connect\n");
+        perror("Why :");
+        exit(1);
+    }
+    char * request_XML = (char*)malloc(MAXXMLSIZE);
     if (request_XML == NULL){
         perror("Error: ");
     }
-    srand(0);
-    int n = rand()%10000;
-    client_converter(n, request_XML);
+    
+    char * response_XML = (char*)malloc(MAXXMLSIZE);
+
+    int length_data = MAXXMLSIZE;
+    for (int t = 0 ; t < 10; t++){
+        srand(t);
+        memset(request_XML,0, length_data);
+        int n = rand()%10000;
+        printf("%d\n",n);
+        client_converter(n, request_XML);
+        length_data =strlen(request_XML);
+        printf("Hi %d\n", t);
+        int datasent = send(sockfd, request_XML, length_data,0);
+        printf("datasent = %d  length_data = %d\n", length_data,datasent);
+        if (datasent < 0){
+            perror("Why: ");
+        }
+        while(datasent<length_data){
+            // printf("hi write from client \n");
+            int temp = send(sockfd, request_XML+datasent, length_data-datasent,0);
+            datasent = datasent + temp;
+        }
+        memset(response_XML,0,MAXXMLSIZE);
+        int bytes_count = recv(sockfd, response_XML,MAXXMLSIZE,0);
+        char * temp1 = response_XML + bytes_count;
+		while(strstr(response_XML, "</Response>")== NULL){
+            bytes_count = recv(sockfd, temp1, MAXXMLSIZE, 0);
+            temp1=  temp1 + bytes_count ;
+		}
+        int ans = client_parser(response_XML);
+        printf("%d\n", ans);
+
+
+    }
 
 }
 void client_converter(int n, char * request_XML) {
@@ -91,12 +128,12 @@ int my_atoi(char * s){
 int client_parser(char * response_XML){
     int n = strlen("<Response>");
     for (int i = n; ; i++){
-        if (request_XML[i] == '<'){
-            request_XML[i] = '\0';
+        if (response_XML[i] == '<'){
+            response_XML[i] = '\0';
             break;
         }
     } 
-    return my_atoi(request_XML+n);
+    return my_atoi(response_XML+n);
 }
 // int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 //                           void *(*start_routine) (void *), void *arg);

@@ -104,15 +104,11 @@ void start_client(int server_port_number, char* server_ip) {
         }
         memset(Response_XML,0,MAXXMLSIZE);
         int bytes_count = recv(sockfd, Response_XML,MAXXMLSIZE,0);
-        // printf("data received from server\n");
         char * temp = Response_XML + bytes_count;
 		while(strstr(Response_XML, "</KVMessage>")== NULL){
             bytes_count = recv(sockfd, temp, MAXXMLSIZE, 0);
             temp=  temp + bytes_count ;
-            // printf("Hi read KVclient\n");
 		}
-		// printf("%s\n", Response_XML);
-		// getchar();
         success = from_XML_to_out(Response_XML, Response_char);
         if (success == 0){
             fprintf(wp,"%s\n","XML Error: Received unparseable message");
