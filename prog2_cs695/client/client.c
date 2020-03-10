@@ -30,111 +30,152 @@ void start_client(void * );
 void client_converter(int , char * );
 int my_atoi(char * );
 int client_parser(char * );
-
+int parameter;
 thread_manager* manager; 
-int main(int argc, char * argv[]){
-    client_args* C =(client_args *) malloc(sizeof(client_args));
-    C->port_number = 8080;
-    strcpy(C->server_IP, "127.0.0.1");
-    init_client(4,C);
-    // start_client( C);
-    return 0;
-}
-void init_client(int thread_count, client_args * Cptr) {
-	manager = (thread_manager*)malloc(sizeof(thread_manager));
-	manager->thread_count = thread_count;
-	manager->threads = (pthread_t*)malloc(thread_count * sizeof(pthread_t));
-	for(int i=0; i<thread_count; ++i) {
-		pthread_create(&manager->threads[i], NULL, (void*)start_client, (void *)Cptr); 
-	}
-    for(int i=0; i<thread_count; ++i) {
-		pthread_join(manager->threads[i], NULL); 
-	}
-}
-void start_client(void * arg ){
-    client_args C = *(client_args *) arg; // deep copy
-    struct sockaddr_in server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));
-    int sockfd;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(C.port_number);
-    server_addr.sin_addr.s_addr = inet_addr(C.server_IP);
-    printf("%d, %s\n", C.port_number, C.server_IP);
-    if(connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
-        printf("Network Error: Could not connect\n");
-        perror("Why :");
-        exit(1);
-    }
-    char * request_XML = (char*)malloc(MAXXMLSIZE);
-    if (request_XML == NULL){
-        perror("Error: ");
-    }
-    
-    char * response_XML = (char*)malloc(MAXXMLSIZE);
-
-    int length_data = MAXXMLSIZE;
-    for (int t = 0 ; t < 10; t++){
-        srand(t);
-        memset(request_XML,0, length_data);
-        int n = rand()%10000;
-        printf("%d\n",n);
-        client_converter(n, request_XML);
-        length_data =strlen(request_XML);
-        printf("Hi %d\n", t);
-        int datasent = send(sockfd, request_XML, length_data,0);
-        printf("datasent = %d  length_data = %d\n", length_data,datasent);
-        if (datasent < 0){
-            perror("Why: ");
-        }
-        while(datasent<length_data){
-            // printf("hi write from client \n");
-            int temp = send(sockfd, request_XML+datasent, length_data-datasent,0);
-            datasent = datasent + temp;
-        }
-        memset(response_XML,0,MAXXMLSIZE);
-        int bytes_count = recv(sockfd, response_XML,MAXXMLSIZE,0);
-        char * temp1 = response_XML + bytes_count;
-		while(strstr(response_XML, "</Response>")== NULL){
-            bytes_count = recv(sockfd, temp1, MAXXMLSIZE, 0);
-            temp1=  temp1 + bytes_count ;
-		}
-        int ans = client_parser(response_XML);
-        printf("%d\n", ans);
-
-
-    }
-
-}
-void client_converter(int n, char * request_XML) {
-    sprintf(request_XML,"<Request>%d</Request>\n",n);
+thread_manager* load_mode_manager;
+void input_mode(void * arg){
+     char c;
+     while ((c=getchar())!= 0){
+         if (c == '+'){
+             if (parameter <30) parameter++;
+         }
+         else if (c== '-'){
+             if (parameter > 10) parameter --;
+         }
+     }
     return;
 }
-int my_atoi(char * s){
-    int ans = 0;
-	char c;
-	while((*s)!= '\0') {
-        if(((*s) >= '0') && ((*s) <= '9')) {
-            ans = ans * 10 + ((*s)-'0');
-        }
-        else{
-            printf("Invalid Integer\n");
-            exit(1);
-        }
-        s++;
+void load_balancer_interface(void * arg){
+    return;
+}
+void test_thread(void * arg){
+    while(1){ 
+        sleep(1);
+        printf("parameter: %d\n", parameter);
     }
-	return ans;
+    return;
 }
-int client_parser(char * response_XML){
-    int n = strlen("<Response>");
-    for (int i = n; ; i++){
-        if (response_XML[i] == '<'){
-            response_XML[i] = '\0';
-            break;
-        }
-    } 
-    return my_atoi(response_XML+n);
+void init_load_mode(void){
+    load_mode_manager = malloc( sizeof(thread_manager));
+    load_mode_manager->thread_count = 3;
+	load_mode_manager->threads = (pthread_t*)malloc(load_mode_manager->thread_count * sizeof(pthread_t));
+	pthread_create(&load_mode_manager->threads[0], NULL, (void*)input_mode, NULL);//mode: + and -  
+	pthread_create(&load_mode_manager->threads[1], NULL, (void*)load_balancer_interface, NULL); //load: interact with load balancer
+	pthread_create(&load_mode_manager->threads[2], NULL, (void*)test_thread, NULL); //test thread fr peinting value
+    for(int i=0; i<3; ++i) {
+            pthread_join(load_mode_manager->threads[i], NULL); 
+    }
+
 }
+int main(){
+    parameter = 10;
+    init_load_mode();
+
+
+}
+// int main(int argc, char * argv[]){
+//     client_args* C =(client_args *) malloc(sizeof(client_args));
+//     C->port_number = 8080;
+//     strcpy(C->server_IP, "192.168.122.112");
+//     init_client(4,C);
+//     // start_client( C);
+//     return 0;
+// }
+// void init_client(int thread_count, client_args * Cptr) {
+// 	manager = (thread_manager*)malloc(sizeof(thread_manager));
+// 	manager->thread_count = thread_count;
+// 	manager->threads = (pthread_t*)malloc(thread_count * sizeof(pthread_t));
+// 	for(int i=0; i<thread_count; ++i) {
+// 		pthread_create(&manager->threads[i], NULL, (void*)start_client, (void *)Cptr); 
+// 	}
+//     for(int i=0; i<thread_count; ++i) {
+// 		pthread_join(manager->threads[i], NULL); 
+// 	}
+// }
+// void start_client(void * arg ){
+//     client_args C = *(client_args *) arg; // deep copy
+//     struct sockaddr_in server_addr;
+//     memset(&server_addr, 0, sizeof(server_addr));
+//     int sockfd;
+//     sockfd = socket(AF_INET, SOCK_STREAM, 0);
+//     server_addr.sin_family = AF_INET;
+//     server_addr.sin_port = htons(C.port_number);
+//     server_addr.sin_addr.s_addr = inet_addr(C.server_IP);
+//     printf("%d, %s\n", C.port_number, C.server_IP);
+//     if(connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+//         printf("Network Error: Could not connect\n");
+//         perror("Why :");
+//         exit(1);
+//     }
+//     char * request_XML = (char*)malloc(MAXXMLSIZE);
+//     if (request_XML == NULL){
+//         perror("Error: ");
+//     }
+    
+//     char * response_XML = (char*)malloc(MAXXMLSIZE);
+
+//     int length_data = MAXXMLSIZE;
+//     for (int t = 0 ; t < 10; t++){
+//         srand(t);
+//         memset(request_XML,0, length_data);
+//         int n = rand()%10000;
+//         printf("%d\n",n);
+//         client_converter(n, request_XML);
+//         length_data =strlen(request_XML);
+//         printf("Hi %d\n", t);
+//         int datasent = send(sockfd, request_XML, length_data,0);
+//         printf("datasent = %d  length_data = %d\n", length_data,datasent);
+//         if (datasent < 0){
+//             perror("Why: ");
+//         }
+//         while(datasent<length_data){
+//             // printf("hi write from client \n");
+//             int temp = send(sockfd, request_XML+datasent, length_data-datasent,0);
+//             datasent = datasent + temp;
+//         }
+//         memset(response_XML,0,MAXXMLSIZE);
+//         int bytes_count = recv(sockfd, response_XML,MAXXMLSIZE,0);
+//         char * temp1 = response_XML + bytes_count;
+// 		while(strstr(response_XML, "</Response>")== NULL){
+//             bytes_count = recv(sockfd, temp1, MAXXMLSIZE, 0);
+//             temp1=  temp1 + bytes_count ;
+// 		}
+//         int ans = client_parser(response_XML);
+//         printf("%d\n", ans);
+
+
+//     }
+
+// }
+// void client_converter(int n, char * request_XML) {
+//     sprintf(request_XML,"<Request>%d</Request>\n",n);
+//     return;
+// }
+// int my_atoi(char * s){
+//     int ans = 0;
+// 	char c;
+// 	while((*s)!= '\0') {
+//         if(((*s) >= '0') && ((*s) <= '9')) {
+//             ans = ans * 10 + ((*s)-'0');
+//         }
+//         else{
+//             printf("Invalid Integer\n");
+//             exit(1);
+//         }
+//         s++;
+//     }
+// 	return ans;
+// }
+// int client_parser(char * response_XML){
+//     int n = strlen("<Response>");
+//     for (int i = n; ; i++){
+//         if (response_XML[i] == '<'){
+//             response_XML[i] = '\0';
+//             break;
+//         }
+//     } 
+//     return my_atoi(response_XML+n);
+// }
 // int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 //                           void *(*start_routine) (void *), void *arg);
 // char * header = "<Request>";
