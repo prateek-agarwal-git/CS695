@@ -158,14 +158,26 @@ int server_parser(char * request_XML){
 }
 void do_work(char * request_XML, int client_fd){
 	int a = server_parser(request_XML);
-	int ans = 2 * a;
+	long ans= 0 ;
+	printf("%d\n", a);
+	if (a < 0) ans = 0;
+	else{
+		printf("Hi\n");
+		for (long i = 0 ; i < (long) ((1L<<61)-1); i++){
+			// printf("HI\n");
+			if (1<<a  == i ){
+				ans = (long) i;
+				break;
+			} 
+		}
+	}
 	char response_XML[200];
-    sprintf(response_XML, "<Response>%d</Response>\n",ans);
+    sprintf(response_XML, "<Response>%ld</Response>\n",ans);
 	int length_data =strlen(response_XML);
     int datasent = send(client_fd, response_XML, length_data,0);
-    printf("datasent = %d  length_data = %d\n", length_data,datasent);
+    // printf("datasent = %d  length_data = %d\n", length_data,datasent);
     while(datasent<length_data){
-            printf("hi write from thread pool\n");
+            // printf("hi write from thread pool\n");
             int temp = send(client_fd, response_XML+datasent, length_data-datasent,0);
             datasent = datasent + temp;
     }
