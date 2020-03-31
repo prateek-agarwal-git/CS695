@@ -3,6 +3,7 @@
 # rc.local
 #
 # gcc /home/prateek/server.c -lpthread -o /home/prateek/server &
-./server &
+#./server &
+home/prateek/server/server &
 
 exit 0

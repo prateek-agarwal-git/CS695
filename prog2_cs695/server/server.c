@@ -6,7 +6,7 @@
 #include <pthread.h>
 // cache libraries
  #include <arpa/inet.h>
-#include <openssl/sha.h>
+//#include <openssl/sha.h>
 // server network libraries
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
     memset(&addr, 0, sizeof (addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(PORT_NUMBER);
-	addr.sin_addr.s_addr = inet_addr(SERVER_IP);
+	addr.sin_addr.s_addr = inet_addr(argv[1]);
 	if(bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
 		printf("Error in socket binding: %s\n", strerror(errno));
 		close(sockfd);
@@ -68,7 +68,6 @@ int main(int argc, char** argv) {
     printf("Server Running ...\n");
 	addrlen = sizeof(client_sockaddr_in);
 	memset(pollfds, 0 , sizeof(pollfds));
-	size_t can_close[MAX_CLIENT_CONN];
 	char * request_xml = (char *)malloc(MAXXMLSIZE);
     while(1){
         if(curr_clients < MAX_CLIENT_CONN) {
@@ -85,7 +84,6 @@ int main(int argc, char** argv) {
 				}
 				else {
 					pollfds[curr_clients].events = POLLIN;
-					can_close[curr_clients] = 1;
 					++curr_clients;
 					printf("new client %d added: \n", curr_clients);
 				}
@@ -99,20 +97,20 @@ int main(int argc, char** argv) {
 				pollfds[i].revents = 0;
 				memset(request_xml, 0, MAXXMLSIZE);
 				bytes_count = recv(pollfds[i].fd, request_xml, MAXXMLSIZE, 0);
-				if(bytes_count <= 0 && can_close[i]) {
+				if(bytes_count <= 0 ) {
 					printf("client %d connection closed\n", i+1);
 					close(pollfds[i].fd);
 					pollfds[i].fd = -1;
 					--curr_clients;
 				} else {
-					can_close[i] = 0;
+					
 					char * temp = request_xml + bytes_count;
 					while(strstr(request_xml, "</Request>")== NULL){
 						bytes_count = recv(pollfds[i].fd, temp, MAXXMLSIZE, 0);
 						temp= temp + bytes_count;
 					}
 					do_work(request_xml, pollfds[i].fd);
-					can_close[i] = 1;
+			
 				}
 			}
         }
@@ -122,7 +120,6 @@ int main(int argc, char** argv) {
 				if(pollfds[i].fd != -1) {
 					if(i != j) {
 						pollfds[j] = pollfds[i];
-						can_close[j] = can_close[i];
 					}
 					++j;
 				}
@@ -165,7 +162,7 @@ void do_work(char * request_XML, int client_fd){
 		printf("Hi\n");
 		for (long i = 0 ; i < (long) ((1L<<61)-1); i++){
 			// printf("HI\n");
-			if (1<<a  == i ){
+			if (1L<<a  == i ){
 				ans = (long) i;
 				break;
 			} 
