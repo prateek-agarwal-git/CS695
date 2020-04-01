@@ -27,7 +27,7 @@ server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.bind(('127.0.0.1',8888))
 server_socket.listen(5)
-conn, addr = server_socket.accept()
+conn1, addr = server_socket.accept()
 # monitorThread(s) monitors the first s servers. It computes the CPU statistics 
 # of first s servers. If the system is overloaded, then another vm is resumed.
 # Resumption involves the steps:
@@ -50,10 +50,9 @@ def monitorThread(s):
     global conn
     dom = conn.defineXML(D[S])
     dom.create()
-
-    requeststr = '<Request>s' + str(s)+'</Request>'
-    server_socket.sendall(requeststr.encode())
-    x = server_socket.recv(1024)
+    requeststr = '<Request>+</Request>'
+    conn1.sendall(requeststr.encode())
+    x = conn1.recv(1024)
     print(x.decode())
     flag = s + 1
     CV.notify_all()

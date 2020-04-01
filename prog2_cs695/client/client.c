@@ -42,14 +42,18 @@ int num_active_servers;
 void input_mode(void * arg){
      char c;
      while ((c=getchar())!= 0){
-         if (c == '+'){
+         if (c == 'u'){
              if (parameter <50) parameter++;
          }
-         else if (c== '-'){
-             if (parameter > 5) parameter --;
+         else if (c== 'd'){
+             if (parameter > 5) parameter--;
          }
      }
     return;
+}
+char monitor_parser(char * request_XML){
+    char * temp = request_XML+ strlen("<Request>");
+    return temp[0];
 }
 void load_balancer_interface(void * arg){
     int sockfd;
@@ -61,19 +65,27 @@ void load_balancer_interface(void * arg){
     monitor_addr.sin_addr.s_addr = inet_addr(C[0]->server_IP);
     while(connect(sockfd, (struct sockaddr*)&monitor_addr, sizeof(monitor_addr)) == -1) ;
     printf("monitor connected\n");
-    char response_XML1[200];
+    char request_XML[100];
+    char response_XML[40] = "<Response>OK</Response>";
     while(1){
-        int bytes_count = recv(sockfd, response_XML1,MAXXMLSIZE,0);
-        printf("%s\n", response_XML1);
-        exit(1);
+        memset(request_XML,0,100);
+        int bytes_count = recv(sockfd, request_XML,MAXXMLSIZE,0);
+        // printf("%s\n", response_XML1);
+        while (strstr(request_XML, "</Request>")== NULL){
+            bytes_count = recv(sockfd, request_XML,MAXXMLSIZE,0);
+        }
+        char c = monitor_parser(request_XML);
+        if (c == '+') num_active_servers++;
+        else num_active_servers--;
+        if (num_active_servers > 5) num_active_servers = 5;
+        else if (num_active_servers <0) num_active_servers = 0;
+        int datasent = send(sockfd, response_XML, strlen(response_XML),0);
+        while (datasent < strlen(response_XML)){
+            int temp = send(sockfd, response_XML+datasent, 40,0);
+            datasent+=temp;
+        }
+           
     }
-    // num_active_servers++;
-    // int n = strlen("<Request>");
-    // for (int i = n; ; i++){
-    //     if (response_XML[i] == '<'){
-    //         response_XML[i] = '\0';
-    //         break;
-    //     }
     
     
 //   server socket at the monitor station. 
@@ -95,14 +107,13 @@ void load_balancer_interface(void * arg){
 //  client threads will send connect call to vm1
 //  clients will then write the data to the socket and expecta  reply.
 //  https://stackoverflow.com/questions/5616092/non-blocking-call-for-reading-descriptor
-
     return;
 }
 void test_thread(void * arg){
-    // while(1){ 
-    //     sleep(4);
-    //     printf("parameter: %d\n", parameter);
-    // }
+    while(1){ 
+        sleep(4);
+        printf("parameter: %d\n", parameter);
+    }
     return;
 }
 void init_load_mode(void){
@@ -113,16 +124,9 @@ void init_load_mode(void){
 	pthread_create(&load_mode_manager->threads[1], NULL, (void*)load_balancer_interface, NULL); //load: interact with load balancer
 	pthread_create(&load_mode_manager->threads[2], NULL, (void*)test_thread, NULL); //test thread fr peinting value
      for(int i=0; i<3; ++i) {
-             pthread_join(load_mode_manager->threads[i],NULL); 
+             pthread_detach(load_mode_manager->threads[i]); 
     }
-
 }
-// int main(){
-//     parameter = 10;
-//     init_load_mode();
-
-
-// }
 int main(int argc, char * argv[]){
     C =(client_args **) malloc((NUMBEROFSERVERS+1)*sizeof(client_args *));
     for (int i = 0; i <= NUMBEROFSERVERS; i++){
@@ -142,9 +146,8 @@ int main(int argc, char * argv[]){
     strcpy(C[3]->server_IP, "192.168.122.23");
     strcpy(C[4]->server_IP, "192.168.122.24");
     strcpy(C[5]->server_IP, "192.168.122.25");
-    // start_monitor(C[0]);
-     init_load_mode();
-    // init_client(1,C);
+    init_load_mode();
+    init_client(1,C);
     return 0;
 }
 void init_client(int thread_count, client_args ** Cptr) {
@@ -169,43 +172,16 @@ void start_client(void * arg ){
         server_addr[i].sin_port = htons(C[i]->port_number);
         server_addr[i].sin_addr.s_addr = inet_addr(C[i]->server_IP);
     }
-    
-    // printf("%d, %s\n", C[1]->port_number, C[1]->server_IP);
     while(connect(sockfd[1], (struct sockaddr*)&server_addr[1], sizeof(server_addr[1])) == -1) ;
     printf("vm1 connected\n");
-    // {
-    //     perror("Why :");
-    //     exit(1);
-    // }
-    while(connect(sockfd[2], (struct sockaddr*)&server_addr[2], sizeof(server_addr[2])) == -1);
-    //  {
-    //     perror("Why :");
-    //     exit(1);
-    // }
-    printf("vm2 connected\n");
-
-    while(connect(sockfd[3], (struct sockaddr*)&server_addr[3], sizeof(server_addr[3])) == -1);
-    // {
-    //     perror("Why :");
-    //     exit(1);
-    // }
-    printf("vm3 connected\n");
-
-    while(connect(sockfd[4], (struct sockaddr*)&server_addr[4], sizeof(server_addr[4])) == -1);
-
-    // if(connect(sockfd[4], (struct sockaddr*)&server_addr[4], sizeof(server_addr[4])) == -1) {
-    //     perror("Why :");
-    //     exit(1);
-    // }
-    printf("vm4 connected\n");
-
-    while(connect(sockfd[5], (struct sockaddr*)&server_addr[5], sizeof(server_addr[5])) == -1);
-    printf("vm5 connected\n");
-
-    // if(connect(sockfd[5], (struct sockaddr*)&server_addr[5], sizeof(server_addr[5])) == -1) {
-    //     perror("Why :");
-    //     exit(1);
-    // }
+    // while(connect(sockfd[2], (struct sockaddr*)&server_addr[2], sizeof(server_addr[2])) == -1);
+    // printf("vm2 connected\n");
+    // while(connect(sockfd[3], (struct sockaddr*)&server_addr[3], sizeof(server_addr[3])) == -1);
+    // printf("vm3 connected\n");
+    // while(connect(sockfd[4], (struct sockaddr*)&server_addr[4], sizeof(server_addr[4])) == -1);
+    // printf("vm4 connected\n");
+    // while(connect(sockfd[5], (struct sockaddr*)&server_addr[5], sizeof(server_addr[5])) == -1);
+    // printf("vm5 connected\n");
     char * request_XML = (char*)malloc(MAXXMLSIZE);
     if (request_XML == NULL){
         perror("Error: ");exit(1);
@@ -214,18 +190,20 @@ void start_client(void * arg ){
     int length_data = MAXXMLSIZE;
     int turn = 0;
     srand(0);
+    int current_servers = 1;
     while(1){
-        
-        // printf("here\n");
+        if (num_active_servers >current_servers){
+            current_servers++;
+            while(connect(sockfd[current_servers], (struct sockaddr*)&server_addr[current_servers], sizeof(server_addr[current_servers])) == -1);
+            printf("vm%d connected\n", current_servers);
+        }
         memset(request_XML,0, length_data);
         int n = rand()%5 + parameter;
         printf("%d\n",n);
         client_converter(n, request_XML);
         length_data =strlen(request_XML);
         int datasent = send(sockfd[turn + 1], request_XML, length_data,0);
-        // assert(1==2);
         if (datasent < 0){
-            
             perror("Why: ");
         }
         while(datasent<length_data){
@@ -242,8 +220,7 @@ void start_client(void * arg ){
         long ans = client_parser(response_XML);
         printf("%ld\n", ans);
         turn++;
-        turn = turn%2;
-        // if (turn == NUMBEROFSERVERS) turn = 0;
+        turn = turn%num_active_servers;
     }
 
 }
