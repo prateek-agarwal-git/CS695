@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -39,6 +38,7 @@ int parameter;
 thread_manager* manager; 
 thread_manager* load_mode_manager;
 client_args** C;
+int num_active_servers;
 void input_mode(void * arg){
      char c;
      while ((c=getchar())!= 0){
@@ -52,13 +52,33 @@ void input_mode(void * arg){
     return;
 }
 void load_balancer_interface(void * arg){
+//   server socket at the monitor station. 
+//  monitor will be waiting for client's request
+//  thread 0 will start vm1 and send the message to client that
+//  vm1 is ready and you may now send message to the vm1
+//  how long should it take to start a VM?
+//  whatever be the time, should client keep trying?
+//  yes  by seeing the return value.
+//  no if the above fails.
+//  load balancer should inform other clients that a new server is available 
+//  rather than opening sockets for it.
+//  client loadbalancer thread in c program:
+//  should send the request
+//  monitor is blocked for request on accept call.
+//   client lb will wait on read call.
+//   monitor will say vm1 is started
+//  load balance will increase a local variable
+//  client threads will send connect call to vm1
+//  clients will then write the data to the socket and expecta  reply.
+//  https://stackoverflow.com/questions/5616092/non-blocking-call-for-reading-descriptor
+
     return;
 }
 void test_thread(void * arg){
-    while(1){ 
-        sleep(2);
-        printf("parameter: %d\n", parameter);
-    }
+    // while(1){ 
+    //     sleep(4);
+    //     printf("parameter: %d\n", parameter);
+    // }
     return;
 }
 void init_load_mode(void){
@@ -68,9 +88,9 @@ void init_load_mode(void){
 	pthread_create(&load_mode_manager->threads[0], NULL, (void*)input_mode, NULL);//mode: + and -  
 	pthread_create(&load_mode_manager->threads[1], NULL, (void*)load_balancer_interface, NULL); //load: interact with load balancer
 	pthread_create(&load_mode_manager->threads[2], NULL, (void*)test_thread, NULL); //test thread fr peinting value
-    // for(int i=0; i<3; ++i) {
-    //         pthread_join(load_mode_manager->threads[i], NULL); 
-    // }
+     for(int i=0; i<3; ++i) {
+             pthread_detach(load_mode_manager->threads[i]); 
+    }
 
 }
 // int main(){
@@ -91,10 +111,7 @@ int main(int argc, char * argv[]){
     }
     C[0]->port_number = 8888;//monitor port 
     parameter = 25;
-    // if (argc<=2){
-    //     printf("Enter IP as well\n");
-    //     exit(1);
-    // }
+    num_active_servers = 0;
     strcpy(C[0]->server_IP, "127.0.0.1");
     strcpy(C[1]->server_IP, "192.168.122.21");
     strcpy(C[2]->server_IP, "192.168.122.22");
@@ -103,9 +120,7 @@ int main(int argc, char * argv[]){
     strcpy(C[5]->server_IP, "192.168.122.25");
     // start_monitor(C[0]);
      init_load_mode();
-    init_client(2,C);
-   
-    // start_client( C);
+    init_client(1,C);
     return 0;
 }
 void init_client(int thread_count, client_args ** Cptr) {
@@ -132,26 +147,41 @@ void start_client(void * arg ){
     }
     
     // printf("%d, %s\n", C[1]->port_number, C[1]->server_IP);
-    if(connect(sockfd[1], (struct sockaddr*)&server_addr[1], sizeof(server_addr[1])) == -1) {
-        perror("Why :");
-        exit(1);
-    }
-    if(connect(sockfd[2], (struct sockaddr*)&server_addr[2], sizeof(server_addr[2])) == -1) {
-        perror("Why :");
-        exit(1);
-    }
-    if(connect(sockfd[3], (struct sockaddr*)&server_addr[3], sizeof(server_addr[3])) == -1) {
-        perror("Why :");
-        exit(1);
-    }
-    if(connect(sockfd[4], (struct sockaddr*)&server_addr[4], sizeof(server_addr[4])) == -1) {
-        perror("Why :");
-        exit(1);
-    }
-    if(connect(sockfd[5], (struct sockaddr*)&server_addr[5], sizeof(server_addr[5])) == -1) {
-        perror("Why :");
-        exit(1);
-    }
+    while(connect(sockfd[1], (struct sockaddr*)&server_addr[1], sizeof(server_addr[1])) == -1) ;
+    printf("vm1 connected\n");
+    // {
+    //     perror("Why :");
+    //     exit(1);
+    // }
+    while(connect(sockfd[2], (struct sockaddr*)&server_addr[2], sizeof(server_addr[2])) == -1);
+    //  {
+    //     perror("Why :");
+    //     exit(1);
+    // }
+    printf("vm2 connected\n");
+
+    while(connect(sockfd[3], (struct sockaddr*)&server_addr[3], sizeof(server_addr[3])) == -1);
+    // {
+    //     perror("Why :");
+    //     exit(1);
+    // }
+    printf("vm3 connected\n");
+
+    while(connect(sockfd[4], (struct sockaddr*)&server_addr[4], sizeof(server_addr[4])) == -1);
+
+    // if(connect(sockfd[4], (struct sockaddr*)&server_addr[4], sizeof(server_addr[4])) == -1) {
+    //     perror("Why :");
+    //     exit(1);
+    // }
+    printf("vm4 connected\n");
+
+    while(connect(sockfd[5], (struct sockaddr*)&server_addr[5], sizeof(server_addr[5])) == -1);
+    printf("vm5 connected\n");
+
+    // if(connect(sockfd[5], (struct sockaddr*)&server_addr[5], sizeof(server_addr[5])) == -1) {
+    //     perror("Why :");
+    //     exit(1);
+    // }
     char * request_XML = (char*)malloc(MAXXMLSIZE);
     if (request_XML == NULL){
         perror("Error: ");exit(1);

@@ -1,16 +1,33 @@
 import socket
 import libvirt
 import threading
-H=["" for _ in range(6)]
-H[1] = 'vm1'
-H[2] = 'vm2'
-H[3] = 'vm3'
-H[4] = 'vm4'
-H[5] = 'vm5'
-a = 0
+# server socket at the monitor station. 
+# monitor will be waiting for client's request
+# thread 0 will start vm1 and send the message to client that
+# vm1 is ready and you may now send message to the vm1
+# how long should it take to start a VM?
+# whatever be the time, should client keep trying?
+# yes  by seeing the return value.
+# no if the above fails.
+# load balancer should inform other clients that a new server is available 
+# rather than opening sockets for it.
+# client loadbalancer thread in c program:
+# should send the request
+# monitor is blocked for request on accept call.
+#  client lb will wait on read call.
+#  monitor will say vm1 is started
+# load balance will increase a local variable
+# client threads will send connect call to vm1
+# clients will then write the data to the socket and expecta  reply.
+# https://stackoverflow.com/questions/5616092/non-blocking-call-for-reading-descriptor
 lock = threading.Lock()
 CV = threading.Condition(lock)
 flag = 0
+server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.bind(('127.0.0.1',8888))
+server_socket.listen(5)
+conn, addr = server_socket.accept()
 # monitorThread(s) monitors the first s servers. It computes the CPU statistics 
 # of first s servers. If the system is overloaded, then another vm is resumed.
 # Resumption involves the steps:
@@ -21,19 +38,22 @@ flag = 0
 # Questions: a) when will client start sending messages to the new server?
 # client should maintain active socket connections
 # and monitorThread(s+1) is called.
+overload = 1
 def monitorThread(s):
     # servers upto s should run
     global flag
     lock.acquire()
     while flag != s:
         CV.wait()
-    # if (s > 0){
-    S = 'vm'+str(s+1)
+    S = 'vm'+str(s)
     print(S)
     global conn
     dom = conn.defineXML(D[S])
     dom.create()
-    # }
+    requeststr = '<Request>s' + str(s)+'</Request>'.
+    server_socket.sendall(requeststr.encode())
+    x = server_socket.recv(1024)
+    print(x.decode())
     flag = s + 1
     CV.notify_all()
     lock.release()
@@ -42,11 +62,7 @@ domains = conn.listAllDomains(0)
 D = {}
 for domain in domains:
     D[domain.name()] = domain.XMLDesc()
-# print(D.keys())
-# print(D['vm1'][:100])
-# dom = conn.defineXML(D['vm2'])
-# dom.create()
-thread = [threading.Thread(target=monitorThread,args=(i,))  for i in range(5)]
+thread = [threading.Thread(target=monitorThread,args=(i+1,))  for i in range(5)]
 for i in range(5):
     thread[i].start()
 for i in range(5):
@@ -80,12 +96,7 @@ for i in range(5):
 # print('balle')
 # x = 3/2
 # print(x)
-# server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-# server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-# server_socket.bind(('127.0.0.1',8888))
-# server_socket.listen(5)
-# conn, addr = server_socket.accept()
 # i = 0
 # while i<10:
 	
