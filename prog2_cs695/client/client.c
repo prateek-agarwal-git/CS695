@@ -188,7 +188,8 @@ void start_client(void * arg ){
         long ans = client_parser(response_XML);
         printf("%ld\n", ans);
         turn++;
-        if (turn == NUMBEROFSERVERS) turn = 0;
+        turn = turn%2;
+        // if (turn == NUMBEROFSERVERS) turn = 0;
     }
 
 }
