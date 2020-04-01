@@ -52,6 +52,30 @@ void input_mode(void * arg){
     return;
 }
 void load_balancer_interface(void * arg){
+    int sockfd;
+    struct sockaddr_in monitor_addr;
+    memset(&monitor_addr, 0, sizeof(monitor_addr));
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    monitor_addr.sin_family = AF_INET;
+    monitor_addr.sin_port = htons(C[0]->port_number);
+    monitor_addr.sin_addr.s_addr = inet_addr(C[0]->server_IP);
+    while(connect(sockfd, (struct sockaddr*)&monitor_addr, sizeof(monitor_addr)) == -1) ;
+    printf("monitor connected\n");
+    char response_XML1[200];
+    while(1){
+        int bytes_count = recv(sockfd, response_XML1,MAXXMLSIZE,0);
+        printf("%s\n", response_XML1);
+        exit(1);
+    }
+    // num_active_servers++;
+    // int n = strlen("<Request>");
+    // for (int i = n; ; i++){
+    //     if (response_XML[i] == '<'){
+    //         response_XML[i] = '\0';
+    //         break;
+    //     }
+    
+    
 //   server socket at the monitor station. 
 //  monitor will be waiting for client's request
 //  thread 0 will start vm1 and send the message to client that
@@ -89,7 +113,7 @@ void init_load_mode(void){
 	pthread_create(&load_mode_manager->threads[1], NULL, (void*)load_balancer_interface, NULL); //load: interact with load balancer
 	pthread_create(&load_mode_manager->threads[2], NULL, (void*)test_thread, NULL); //test thread fr peinting value
      for(int i=0; i<3; ++i) {
-             pthread_detach(load_mode_manager->threads[i]); 
+             pthread_join(load_mode_manager->threads[i],NULL); 
     }
 
 }
@@ -120,7 +144,7 @@ int main(int argc, char * argv[]){
     strcpy(C[5]->server_IP, "192.168.122.25");
     // start_monitor(C[0]);
      init_load_mode();
-    init_client(1,C);
+    // init_client(1,C);
     return 0;
 }
 void init_client(int thread_count, client_args ** Cptr) {

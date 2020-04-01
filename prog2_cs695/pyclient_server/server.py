@@ -22,7 +22,7 @@ import threading
 # https://stackoverflow.com/questions/5616092/non-blocking-call-for-reading-descriptor
 lock = threading.Lock()
 CV = threading.Condition(lock)
-flag = 0
+flag = 1
 server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.bind(('127.0.0.1',8888))
@@ -50,7 +50,8 @@ def monitorThread(s):
     global conn
     dom = conn.defineXML(D[S])
     dom.create()
-    requeststr = '<Request>s' + str(s)+'</Request>'.
+
+    requeststr = '<Request>s' + str(s)+'</Request>'
     server_socket.sendall(requeststr.encode())
     x = server_socket.recv(1024)
     print(x.decode())
