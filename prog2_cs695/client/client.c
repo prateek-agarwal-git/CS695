@@ -190,21 +190,28 @@ void start_client(void * arg ){
     int length_data = MAXXMLSIZE;
     int turn = 0;
     srand(0);
-    int current_servers = 1;
+    int current_servers = 2;
     while(1){
-        if (num_active_servers >current_servers){
-            current_servers++;
-            while(connect(sockfd[current_servers], (struct sockaddr*)&server_addr[current_servers], sizeof(server_addr[current_servers])) == -1);
-            printf("vm%d connected\n", current_servers);
+        if (num_active_servers >=current_servers){
+            if(connect(sockfd[current_servers], (struct sockaddr*)&server_addr[current_servers], sizeof(server_addr[current_servers])) == 0){
+                current_servers++;
+                printf("vm%d connected\n", current_servers-1);
+            }
+            else{
+                printf("not connected\n");
+            }
         }
         memset(request_XML,0, length_data);
         int n = rand()%5 + parameter;
         printf("%d\n",n);
         client_converter(n, request_XML);
         length_data =strlen(request_XML);
+        printf("%d\n", turn + 1);
         int datasent = send(sockfd[turn + 1], request_XML, length_data,0);
         if (datasent < 0){
-            perror("Why: ");
+            printf("%d\n", turn+1);
+            perror("Why1");
+            exit(1);
         }
         while(datasent<length_data){
             int temp = send(sockfd[turn+1], request_XML+datasent, length_data-datasent,0);
@@ -220,7 +227,7 @@ void start_client(void * arg ){
         long ans = client_parser(response_XML);
         printf("%ld\n", ans);
         turn++;
-        turn = turn%num_active_servers;
+        turn = turn%(current_servers-1);
     }
 
 }

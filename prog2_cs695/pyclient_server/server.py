@@ -49,7 +49,10 @@ def monitorThread(s):
     print(S)
     global conn
     dom = conn.defineXML(D[S])
-    dom.create()
+    try:
+        dom.create()
+    except: 
+        pass
     requeststr = '<Request>+</Request>'
     conn1.sendall(requeststr.encode())
     x = conn1.recv(1024)
@@ -62,6 +65,12 @@ domains = conn.listAllDomains(0)
 D = {}
 for domain in domains:
     D[domain.name()] = domain.XMLDesc()
+# print(type(D['vm1']))
+# s = D['vm1'][:]
+# print(s.find('vm1'))
+# s= s[:28]+'vm7'+s[31:]
+# dom1 = conn.defineXML(s)
+# dom1.create()
 thread = [threading.Thread(target=monitorThread,args=(i+1,))  for i in range(5)]
 for i in range(5):
     thread[i].start()
