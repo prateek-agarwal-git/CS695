@@ -57,9 +57,7 @@ void input_mode(void * arg){
                  (time1->tv_sec)--;
              }
          }
-        //   else if (c== '-'){
-        //      if (parameter > 5) parameter--;
-        //  }
+
      }
     return;
 }
@@ -89,8 +87,8 @@ void load_balancer_interface(void * arg){
         char c = monitor_parser(request_XML);
         if (c == '+') num_active_servers++;
         else num_active_servers--;
-        if (num_active_servers > 5) num_active_servers = 5;
-        else if (num_active_servers <0) num_active_servers = 0;
+        if (num_active_servers > NUMBEROFSERVERS) num_active_servers = NUMBEROFSERVERS;
+        else if (num_active_servers <1) num_active_servers = 1;
         int datasent = send(sockfd, response_XML, strlen(response_XML),0);
         while (datasent < strlen(response_XML)){
             int temp = send(sockfd, response_XML+datasent, 40,0);
@@ -99,21 +97,21 @@ void load_balancer_interface(void * arg){
     }
     return;
 }
-void test_thread(void * arg){
-    while(1){ 
-        sleep(4);
-        printf("parameter: %d\n", parameter);
-    }
-    return;
-}
+// void test_thread(void * arg){
+//     // while(1){ 
+//     //     sleep(4);
+//     //     printf("parameter: %d\n", parameter);
+//     // }
+//     return;
+// }
 void init_load_mode(void){
     load_mode_manager = malloc( sizeof(thread_manager));
     load_mode_manager->thread_count = 3;
 	load_mode_manager->threads = (pthread_t*)malloc(load_mode_manager->thread_count * sizeof(pthread_t));
 	pthread_create(&load_mode_manager->threads[0], NULL, (void*)input_mode, NULL);//mode: + and -  
 	pthread_create(&load_mode_manager->threads[1], NULL, (void*)load_balancer_interface, NULL); //load: interact with load balancer
-	pthread_create(&load_mode_manager->threads[2], NULL, (void*)test_thread, NULL); //test thread fr peinting value
-     for(int i=0; i<3; ++i) {
+	// pthread_create(&load_mode_manager->threads[2], NULL, (void*)test_thread, NULL); //test thread fr peinting value
+     for(int i=0; i<2; ++i) {
              pthread_detach(load_mode_manager->threads[i]); 
     }
 }
@@ -131,7 +129,7 @@ int main(int argc, char * argv[]){
     time1->tv_sec = 4;
     time1->tv_nsec = 0;
     C[0]->port_number = 8888;//monitor port 
-    parameter = 20;
+    parameter = 22;
     num_active_servers = 0;
     strcpy(C[0]->server_IP, "127.0.0.1");
     strcpy(C[1]->server_IP, "192.168.122.21");
@@ -139,6 +137,8 @@ int main(int argc, char * argv[]){
     strcpy(C[3]->server_IP, "192.168.122.23");
     strcpy(C[4]->server_IP, "192.168.122.24");
     strcpy(C[5]->server_IP, "192.168.122.25");
+    srand(0);
+
     init_load_mode();
     init_client(3,C);
     return 0;
@@ -175,17 +175,18 @@ void start_client(void * arg ){
     char * response_XML = (char*)malloc(MAXXMLSIZE);
     int length_data = MAXXMLSIZE;
     int turn = 0;
-    srand(0);
-    int current_servers = 2;
+    int next_server = 2;
+    sleep(rand()%10+1);
     while(1){
-        if (num_active_servers >=current_servers){
-            if(connect(sockfd[current_servers], (struct sockaddr*)&server_addr[current_servers], sizeof(server_addr[current_servers])) == 0){
-                current_servers++;
-                printf("vm%d connected\n", current_servers-1);
+        if (num_active_servers >=next_server){
+            if(connect(sockfd[next_server], (struct sockaddr*)&server_addr[next_server], sizeof(server_addr[next_server])) == 0){
+                next_server++;
+                printf("vm%d connected\n", next_server-1);
             }
-            else{
-                printf("not connected\n");
-            }
+            else   printf("not connected\n");
+        }
+        else{
+            next_server = num_active_servers;
         }
         memset(request_XML,0, length_data);
         int n = rand()%5 + parameter;
@@ -194,17 +195,14 @@ void start_client(void * arg ){
         length_data =strlen(request_XML);
         printf("%d\n", turn + 1);
         int datasent = send(sockfd[turn + 1], request_XML, length_data,0);
-        if (datasent < 0){
-            printf("%d\n", turn+1);
-            perror("Why1");
-            exit(1);
-        }
+        if (datasent < 0)  continue;
         while(datasent<length_data){
             int temp = send(sockfd[turn+1], request_XML+datasent, length_data-datasent,0);
             datasent = datasent + temp;
         }
         memset(response_XML,0,MAXXMLSIZE);
         int bytes_count = recv(sockfd[turn+1], response_XML,MAXXMLSIZE,0);
+        if (bytes_count<0) continue;
         char * temp1 = response_XML + bytes_count;
 		while(strstr(response_XML, "</Response>")== NULL){
             bytes_count = recv(sockfd[turn+1], temp1, MAXXMLSIZE, 0);
@@ -213,9 +211,8 @@ void start_client(void * arg ){
         long ans = client_parser(response_XML);
         printf("%ld\n", ans);
         turn++;
-        turn = turn%(current_servers-1);
-	//sleep(3);
-	nanosleep(time1,NULL);
+        turn = turn%(next_server-1);
+	    nanosleep(time1,NULL);
     }
 
 }

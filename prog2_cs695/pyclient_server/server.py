@@ -2,6 +2,7 @@ import socket
 import libvirt
 import threading
 from time import sleep,time
+from statistics import mean
 # server socket at the monitor station. 
 # monitor will be waiting for client's request
 # thread 0 will start vm1 and send the message to client that
@@ -43,67 +44,98 @@ overload = 1
 def monitorThread1(s):
     global flag
     lock.acquire()
-    while flag != s:
-        CV.wait()
-    S = 'vm'+str(s)
-    print(S)
-    global conn
-    dom = conn.defineXML(D[S])
-    try:
-        dom.create()
-    except: 
-        pass
-    requeststr = '<Request>+</Request>'
-    conn1.sendall(requeststr.encode())
-    x = conn1.recv(1024)
-    print(x.decode())
-    sleep(0.5)
-    t = 0
-    t = dom.getCPUStats(True)[0]['cpu_time']
     while True:
-        t = dom.getCPUStats(True)
-        start = time()
+        while flag != s:
+            CV.wait()
+        S = 'vm'+str(s)
+        print(S)
+        global conn
+        dom = conn.defineXML(D[S])
+        print(dom.isActive())
+        if not dom.isActive():
+            try:
+                dom.create()
+                if s > 1:
+                    sleep(30)
+            except: 
+                pass
+        global overload
+        if overload == 1:
+            requeststr = '<Request>+</Request>'
+            conn1.sendall(requeststr.encode())
+            x = conn1.recv(1024)
+            print(x.decode())
         sleep(10)
-        y = dom.getCPUStats(True)
-        end = time()
-        ft =y[0]['cpu_time']  - y[0]['user_time'] - y[0]['system_time']
-        t = t[0]['cpu_time']  - t[0]['user_time'] - t[0]['system_time'] 
+        t = 0
+        t = dom.getCPUStats(True)[0]['cpu_time']
+        movingAvg = 0
+        ansList = []
+        inccount = 0
+        deccount = 0
+        upperThreshold = 70
+        lowerThreshold = 20
+        while True:
+            t = dom.getCPUStats(True)
+            start = time()
+            sleep(5)
+            y = dom.getCPUStats(True)
+            end = time()
+            ft =y[0]['cpu_time']  - y[0]['user_time'] - y[0]['system_time']
+            t = t[0]['cpu_time']  - t[0]['user_time'] - t[0]['system_time'] 
+            ans = (( ft - t)/((end-start)*10**9)) * 100
+            ansList.append(ans)
+            if len(ansList)>=10:
+                ansList = ansList[1:]
+            
+            ans=mean(ansList)
+            if int(ans) > upperThreshold:
+                inccount+=1
+            else:
+                inccount = 0
+            print(str(round(ans,2))+ '%')
+            if inccount >= 5:
+                flag = s + 1
+                overload = 1
+                break
+            if int(ans) < lowerThreshold:
+                deccount+=1
+            else:
+                deccount = 0
+            if deccount >= 5 and s > 1:
+                
+                overload = -1
+                requeststr = '<Request>-</Request>'
+                conn1.sendall(requeststr.encode())
+                x = conn1.recv(1024)
+                sleep(30)
+                dom.shutdown()
+                flag = s - 1
+                break    
 
-        # print("t=", t)
-        # print("y=",y)
-        # print(start)
-        # print(end)
-        # print(y)
-        # exit(0)
-        # ft =y[0]['cpu_time']
-        ans = (( ft - t)/((end-start)*10**9)) * 100
-        # t = ft
-        print(str(ans)+ '%')
-
-    flag = s + 1
-    CV.notify_all()
+        
+        CV.notify_all()
     lock.release()
-def monitorThread(s):
-    # servers upto s should run
-    global flag
-    lock.acquire()
-    while flag != s:
-        CV.wait()
-    S = 'vm'+str(s)
-    print(S)
-    global conn
-    dom = conn.defineXML(D[S])
-    try:
-        dom.create()
-    except: 
-        pass
-    requeststr = '<Request>+</Request>'
-    conn1.sendall(requeststr.encode())
-    x = conn1.recv(1024)
-    print(x.decode())
-    flag = s + 1
-    CV.notify_all()
-    lock.release()
+# def monitorThread(s):
+#     # servers upto s should run
+#     global flag
+#     lock.acquire()
+#     while flag != s:
+#         CV.wait()
+#     S = 'vm'+str(s)
+#     print(S)
+#     global conn
+#     dom = conn.defineXML(D[S])
+#     try:
+#         dom.create()
+#     except: 
+#         pass
+#     requeststr = '<Request>+</Request>'
+#     conn1.sendall(requeststr.encode())
+#     x = conn1.recv(1024)
+#     print(x.decode())
+#     flag = s + 1
+#     CV.notify_all()
+#     lock.release()
 conn = libvirt.open('qemu:///system')
 domains = conn.listAllDomains(0)
 D = {}
@@ -115,14 +147,14 @@ for domain in domains:
 # s= s[:28]+'vm7'+s[31:]
 # dom1 = conn.defineXML(s)
 # dom1.create()
-thread = threading.Thread(target=monitorThread1,args=(1,))
-thread.start()
-thread.join() 
-# thread = [threading.Thread(target=monitorThread,args=(i+1,))  for i in range(5)]
-# for i in range(1):
-#     thread[i].start()
-# for i in range(1):
-#     thread[i].join()
+# thread = threading.Thread(target=monitorThread1,args=(1,))
+# thread.start()
+# thread.join() 
+thread = [threading.Thread(target=monitorThread1,args=(i+1,))  for i in range(3)]
+for i in range(3):
+    thread[i].start()
+for i in range(3):
+    thread[i].join()
 
 
 
