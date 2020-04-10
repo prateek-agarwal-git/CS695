@@ -22,7 +22,7 @@
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <sys/socket.h>
 #define PORT_NUMBER 8080
-#define SERVER_IP "127.0.0.1"
+#define SERVER_IP "192.168.122.21"
 #define MAX_CLIENT_CONN 500
 #define MAXXMLSIZE 256
 void do_work(char *, int );
@@ -168,6 +168,15 @@ void do_work(char * request_XML, int client_fd){
 			} 
 		}
 	}
+	int x = 100 - a;
+	int * A = (int *)malloc(x * x *sizeof(int));
+	int n = x * x;
+	for (int i = 0; i < x* x ; i++){
+		int temp  = A[i];
+		A[i] = A[n-i-1];
+		A[n-1-i] = temp;
+	}
+	free(A);
 	char response_XML[200];
     sprintf(response_XML, "<Response>%ld</Response>\n",ans);
 	int length_data =strlen(response_XML);

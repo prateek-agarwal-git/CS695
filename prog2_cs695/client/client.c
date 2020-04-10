@@ -19,7 +19,6 @@
 #define NUMBEROFSERVERS 5
 #define SERVER_PORT_NUMBER 8080
 #define MONITOR_PORT_NUMBER 8888 
-
 typedef struct thread_manager{
     int thread_count;
 	pthread_t* threads;
@@ -28,6 +27,7 @@ struct client_start_args{
     int port_number;
     char server_IP[32];
 };
+struct timespec * time1;
 typedef struct client_start_args client_args;
 void init_client(int, client_args ** );
 void start_client(void * );
@@ -42,12 +42,24 @@ int num_active_servers;
 void input_mode(void * arg){
      char c;
      while ((c=getchar())!= 0){
-         if (c == 'u'){
+         if (c == '+'){
              if (parameter <50) parameter++;
          }
-         else if (c== 'd'){
+         else if (c== '-'){
              if (parameter > 5) parameter--;
          }
+         else if (c == 'u'){
+             (time1->tv_sec)++;
+         }
+         else if (c == 'd'){
+             
+             if (time1->tv_sec > 0){
+                 (time1->tv_sec)--;
+             }
+         }
+        //   else if (c== '-'){
+        //      if (parameter > 5) parameter--;
+        //  }
      }
     return;
 }
@@ -84,29 +96,7 @@ void load_balancer_interface(void * arg){
             int temp = send(sockfd, response_XML+datasent, 40,0);
             datasent+=temp;
         }
-           
     }
-    
-    
-//   server socket at the monitor station. 
-//  monitor will be waiting for client's request
-//  thread 0 will start vm1 and send the message to client that
-//  vm1 is ready and you may now send message to the vm1
-//  how long should it take to start a VM?
-//  whatever be the time, should client keep trying?
-//  yes  by seeing the return value.
-//  no if the above fails.
-//  load balancer should inform other clients that a new server is available 
-//  rather than opening sockets for it.
-//  client loadbalancer thread in c program:
-//  should send the request
-//  monitor is blocked for request on accept call.
-//   client lb will wait on read call.
-//   monitor will say vm1 is started
-//  load balance will increase a local variable
-//  client threads will send connect call to vm1
-//  clients will then write the data to the socket and expecta  reply.
-//  https://stackoverflow.com/questions/5616092/non-blocking-call-for-reading-descriptor
     return;
 }
 void test_thread(void * arg){
@@ -137,8 +127,11 @@ int main(int argc, char * argv[]){
         }
         C[i] ->port_number = 8080;
     }
+    time1 = (struct timespec *)malloc(sizeof(struct timespec));
+    time1->tv_sec = 4;
+    time1->tv_nsec = 0;
     C[0]->port_number = 8888;//monitor port 
-    parameter = 25;
+    parameter = 20;
     num_active_servers = 0;
     strcpy(C[0]->server_IP, "127.0.0.1");
     strcpy(C[1]->server_IP, "192.168.122.21");
@@ -147,7 +140,7 @@ int main(int argc, char * argv[]){
     strcpy(C[4]->server_IP, "192.168.122.24");
     strcpy(C[5]->server_IP, "192.168.122.25");
     init_load_mode();
-    init_client(1,C);
+    init_client(3,C);
     return 0;
 }
 void init_client(int thread_count, client_args ** Cptr) {
@@ -174,14 +167,7 @@ void start_client(void * arg ){
     }
     while(connect(sockfd[1], (struct sockaddr*)&server_addr[1], sizeof(server_addr[1])) == -1) ;
     printf("vm1 connected\n");
-    // while(connect(sockfd[2], (struct sockaddr*)&server_addr[2], sizeof(server_addr[2])) == -1);
-    // printf("vm2 connected\n");
-    // while(connect(sockfd[3], (struct sockaddr*)&server_addr[3], sizeof(server_addr[3])) == -1);
-    // printf("vm3 connected\n");
-    // while(connect(sockfd[4], (struct sockaddr*)&server_addr[4], sizeof(server_addr[4])) == -1);
-    // printf("vm4 connected\n");
-    // while(connect(sockfd[5], (struct sockaddr*)&server_addr[5], sizeof(server_addr[5])) == -1);
-    // printf("vm5 connected\n");
+   
     char * request_XML = (char*)malloc(MAXXMLSIZE);
     if (request_XML == NULL){
         perror("Error: ");exit(1);
@@ -228,6 +214,8 @@ void start_client(void * arg ){
         printf("%ld\n", ans);
         turn++;
         turn = turn%(current_servers-1);
+	//sleep(3);
+	nanosleep(time1,NULL);
     }
 
 }
@@ -260,3 +248,30 @@ long client_parser(char * response_XML){
     } 
     return my_atoi(response_XML+n);
 }
+//   server socket at the monitor station. 
+//  monitor will be waiting for client's request
+//  thread 0 will start vm1 and send the message to client that
+//  vm1 is ready and you may now send message to the vm1
+//  how long should it take to start a VM?
+//  whatever be the time, should client keep trying?
+//  yes  by seeing the return value.
+//  no if the above fails.
+//  load balancer should inform other clients that a new server is available 
+//  rather than opening sockets for it.
+//  client loadbalancer thread in c program:
+//  should send the request
+//  monitor is blocked for request on accept call.
+//   client lb will wait on read call.
+//   monitor will say vm1 is started
+//  load balance will increase a local variable
+//  client threads will send connect call to vm1
+//  clients will then write the data to the socket and expecta  reply.
+//  https://stackoverflow.com/questions/5616092/non-blocking-call-for-reading-descriptor
+ // while(connect(sockfd[2], (struct sockaddr*)&server_addr[2], sizeof(server_addr[2])) == -1);
+    // printf("vm2 connected\n");
+    // while(connect(sockfd[3], (struct sockaddr*)&server_addr[3], sizeof(server_addr[3])) == -1);
+    // printf("vm3 connected\n");
+    // while(connect(sockfd[4], (struct sockaddr*)&server_addr[4], sizeof(server_addr[4])) == -1);
+    // printf("vm4 connected\n");
+    // while(connect(sockfd[5], (struct sockaddr*)&server_addr[5], sizeof(server_addr[5])) == -1);
+    // printf("vm5 connected\n");

@@ -1,6 +1,7 @@
 import socket
 import libvirt
 import threading
+from time import sleep,time
 # server socket at the monitor station. 
 # monitor will be waiting for client's request
 # thread 0 will start vm1 and send the message to client that
@@ -39,6 +40,49 @@ conn1, addr = server_socket.accept()
 # client should maintain active socket connections
 # and monitorThread(s+1) is called.
 overload = 1
+def monitorThread1(s):
+    global flag
+    lock.acquire()
+    while flag != s:
+        CV.wait()
+    S = 'vm'+str(s)
+    print(S)
+    global conn
+    dom = conn.defineXML(D[S])
+    try:
+        dom.create()
+    except: 
+        pass
+    requeststr = '<Request>+</Request>'
+    conn1.sendall(requeststr.encode())
+    x = conn1.recv(1024)
+    print(x.decode())
+    sleep(0.5)
+    t = 0
+    t = dom.getCPUStats(True)[0]['cpu_time']
+    while True:
+        t = dom.getCPUStats(True)
+        start = time()
+        sleep(10)
+        y = dom.getCPUStats(True)
+        end = time()
+        ft =y[0]['cpu_time']  - y[0]['user_time'] - y[0]['system_time']
+        t = t[0]['cpu_time']  - t[0]['user_time'] - t[0]['system_time'] 
+
+        # print("t=", t)
+        # print("y=",y)
+        # print(start)
+        # print(end)
+        # print(y)
+        # exit(0)
+        # ft =y[0]['cpu_time']
+        ans = (( ft - t)/((end-start)*10**9)) * 100
+        # t = ft
+        print(str(ans)+ '%')
+
+    flag = s + 1
+    CV.notify_all()
+    lock.release()
 def monitorThread(s):
     # servers upto s should run
     global flag
@@ -71,11 +115,14 @@ for domain in domains:
 # s= s[:28]+'vm7'+s[31:]
 # dom1 = conn.defineXML(s)
 # dom1.create()
-thread = [threading.Thread(target=monitorThread,args=(i+1,))  for i in range(5)]
-for i in range(5):
-    thread[i].start()
-for i in range(5):
-    thread[i].join()
+thread = threading.Thread(target=monitorThread1,args=(1,))
+thread.start()
+thread.join() 
+# thread = [threading.Thread(target=monitorThread,args=(i+1,))  for i in range(5)]
+# for i in range(1):
+#     thread[i].start()
+# for i in range(1):
+#     thread[i].join()
 
 
 
